@@ -1,5 +1,6 @@
 :root {
-  --the-mood: hsl(352, 78%, 55%);
+  --the-mood: hsl(352, 75%, 50%);
+  --primary-text: hsl(0, 0%, 30%);
 }
 
 * {
@@ -8,10 +9,14 @@
   overflow: hidden;
 }
 
+html {
+  overflow-y: auto;
+}
+
 body {
   font-family: Nunito, Verdunda, Helvetica, Arial, sans-serif;
-  overflow: auto;
-  color: rgb(82, 82, 82);
+  color: var(--primary-text);
+  background: hsl(0, 0%, 20%);
 }
 
 a, a:visited {
@@ -21,13 +26,8 @@ a, a:visited {
   transition: filter 120ms ease-out;
 }
 
-a::before {
-  content: '🔗 ';
-  font-size: .9em;
-}
-
 a:hover {
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,.2)) brightness(90%);
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.2)) brightness(120%);
 }
 
 a:active {
@@ -36,107 +36,181 @@ a:active {
 
 section.intro {
   display: flex;
+  overflow: visible;
   justify-content: space-between;
-  align-content: center;
+  align-content: space-around;
   align-items: center;
   flex-flow: row wrap;
   padding: 10px;
   width: 100%;
   color: hsl(0, 0%, 35%);
-  text-align: left;
-  background: url("../media/mesh.jpg") no-repeat;
+  background: url("../media/hero-image.jpg") no-repeat;
   background-position: center;
   background-size: cover;
   background-color: hsl(0, 0%, 25%);
-  border-bottom: 4px solid hsl(0, 0%, 30%);
-  border-top: 4px solid rgba(0,0,0,0);
+  border-bottom: 1px solid hsl(0, 0%, 30%);
   box-shadow: 0 2px 4px rgba(0,0,0,.12);
-  margin-bottom: 2em;
+  margin-bottom: 1em;
 }
 
 section.intro > header {
   display: inline-block;
-  margin: .5em;
-  padding: .5em;
-  font-size: 1.4em;
+  white-space: nowrap;
+  overflow: visible;
+  margin: 5px 0;
+  padding: .4em;
+  border-radius: 2px;
+  font-size: 1.36em;
+  background: #fff;
   text-shadow: 0 2px 3px rgba(0,0,0,.15);
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
 }
 
 .contact {
-  display: inline-block;
+  display: block;
   font-size: 1.05em;
+  margin: 5px 0;
   padding: 5px;
-  margin: 5px;
   color: #fff;
+  text-align: center;
 }
 
 .contact > span {
   background: hsl(0, 0%, 35%);
   padding: 5px;
+  margin-left: 5px;
   border-radius: 4px;
   transition: all 140ms ease-out;
+  font-weight: bold;
 }
 
-.contact > span > span {
+.contact > span span {
   transition: all 140ms ease-out;
 }
 
-.contact > span > span:last-of-type {
+.contact > span span:last-of-type {
   font-size: 0;
+  margin: -3px;
 }
 
-.contact > span:hover > span:last-of-type {
+.contact > span:hover span:last-of-type {
   font-size: 1em;
+  margin: 0;
 }
 
-.contact > span:hover > span:first-of-type {
+.contact > span:hover span:first-of-type {
   font-size: 0;
 }
 
-main.content {
+main {
   display: grid;
-  grid-template-columns: 1fr minmax(280px, .3fr);
+  grid-template-columns: 1fr minmax(250px, .26fr);
   grid-gap: 1em;
   margin: .5em 1em;
+  overflow: visible;
 }
 
-main.content > article {
+main > article {
+  overflow: visible;
   display: flex;
   align-content: center;
-  align-items: flex-start;
+  align-items: center;
   flex-direction: column;
   background: var(--the-mood);
-  color: #fff;
-  border-radius: 2px;
-  padding: 10px;
+  border-radius: 0 2px 2px 2px;
+  margin: 2em 0;
+  padding: 9px;
   box-shadow: 0 2px 4px rgba(0,0,0,.12);
 }
 
-main.content > article > header {
+main > article > header {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
   font-size: 1.1em;
-  border-bottom: 1px solid #fff;
-  margin-bottom: 1em;
+  border-radius: 2px 2px 0 0;
+  padding: 3px 6px;
+  color: #fff;
+  background: var(--the-mood);
+  box-shadow: 0 -2px 4px rgba(0,0,0,.12);
+}
+
+.ideas > section {
+  display: flex;
+  justify-content: space-around;
+  align-content: center;
+  align-items: center;
+  flex-flow: row wrap;
+  overflow: visible;
 }
 
 .idea {
-  margin: 5px;
+  display: inline-block;
+  flex: 0 1 110px;
+  max-height: 110px;
   border-radius: 2px;
-  background: hsl(0, 0%, 20%);
-  box-shadow: 0 2px 4px rgba(0,0,0,.12);
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  transition: all 120ms ease-out;
+}
+
+.idea:hover, .idea.open {
+  flex: 1 1 330px;
+  max-height: 330px;
+  overflow-y: auto;
 }
 
 .idea > header {
   font-size: 1.1em;
-  padding: 5px;
-  margin: 5px;
+  padding: 6px;
+  margin: 3px;
   border-radius: 2px;
-  background: hsl(0, 0%, 25%);
+  background: hsl(0, 0%, 96%);
+  text-align: center;
+  cursor: ns-resize;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.16);
 }
 
 .idea > p {
-  font-size: 1.05em;
-  margin: 5px;
-  padding: 5px 10px;
+  display: block;
+  line-height: 0;
+  font-size: 0;
+  padding: 0 0;
+  opacity: 0;
+  transition: all 130ms ease-out;
+}
+
+.idea.closed > p {
+  display: block !important;
+  line-height: 0  !important;
+  font-size: 0  !important;
+  padding: 0 0  !important;
+  opacity: 0  !important;
+}
+
+.idea:hover > p, .idea.open {
+  line-height: 1.25;
+  font-size: 1.06em;
+  padding: 9px 15px;
+  opacity: 1;
+}
+
+.code > section {
+  display: block;
+  width: 100%;
+}
+
+.code > section > a::before {
+  content: '🔗 ';
+  font-size: .9em;
+}
+
+.code > section > a {
+  display: block;
+  background: #fff;
+  border-radius: 2px;
+  padding: 3px 6px;
+  margin: 6px 0;
 }
 
 @keyframes transition-view {
@@ -186,10 +260,15 @@ main.content > article > header {
 }
 
 @media all and (max-width: 760px) {
-  main.content {
+  section.intro {
+    justify-content: center;
+  }
+
+  main {
     display: block;
   }
-  main.content > article {
-    margin: 1em auto;
+
+  main > article {
+    margin: 3em auto;
   }
 }
