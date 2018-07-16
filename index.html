@@ -9,18 +9,70 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css">
   <link rel="stylesheet" href="./assets/css/prism-default.css">
   <link rel="stylesheet" href="./assets/css/main.css">
-  <!-- script src="https://rawgit.com/SaulDoesCode/rilti.js/experimental/dist/rilti.min.js"></script -->
   <!-- script src="./assets/js/prism.js"></script -->
 </head>
 
 <body>
+  <style>
+    @keyframes transition-view {
+      0% {
+        opacity: 0;
+        filter: brightness(0) grayscale(100%);
+      }
+      100% {
+        opacity: 1;
+        filter: brightness(1) grayscale(0%);
+      }
+    }
 
+    .transition-view {
+      animation: transition-view 600ms ease-out;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: center;
+      align-content: center;
+      align-items: center;
+      flex-direction: column;
+      text-align: center;
+      width: 100vw;
+      height: 100vh;
+      padding: 1vh;
+      font-size: 1.1rem;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0,0,0,.12);
+      background: var(--the-mood);
+    }
+
+    .come-see {
+      margin: 1em auto;
+      width: 60px;
+      height: 60px;
+      line-height: 60px;
+      border-radius: 100%;
+      border: 1px solid #fff;
+      background: rgba(0,0,0,0);
+      cursor: pointer;
+    }
+
+    .come-see::after {
+      content: '▼';
+    }
+
+    @media all and (max-width: 760px) {
+      section.intro {
+        justify-content: center;
+      }
+    }
+  </style>
   <header class="hero">
     <h1>Hi, I'm Saul</h1>
     <p>Not quite finished but this'll be my personal site.</p>
     <div class="come-see" title="wanna see what I've done so far?"></div>
   </header>
   <script src="./assets/js/main.js" async></script>
+  <script src="https://rawgit.com/SaulDoesCode/rilti.js/experimental/dist/rilti.min.js" async></script>
 </body>
 
 </html>
