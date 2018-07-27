@@ -1,16 +1,18 @@
+@import url('https://fonts.googleapis.com/css?family=Nunito');
+
 :root {
-  --the-mood: hsl(347, 88%, 47%);
+  --the-mood: hsl(39, 74%, 79%);
   --primary-text: hsl(0, 0%, 30%);
 }
 
-* {
+*, * * {
   box-sizing: border-box;
   position: relative;
-  overflow: hidden;
 }
 
 html {
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 body {
@@ -18,6 +20,8 @@ body {
   color: var(--primary-text);
   background: #fff;
   color: hsl(0, 0%, 30%);
+  width: 100vw;
+  height: 100vh;
 }
 
 .flexCenterSpacedHorizonal {
@@ -40,7 +44,7 @@ a, a:visited {
 }
 
 a:hover {
-  transform: translateX(-2px);
+  transform: translateY(-2px);
 }
 
 a:active {
@@ -49,69 +53,71 @@ a:active {
 
 .destructureMe {
   display: inline-block;
-  font-size: 1.15em;
-  padding: .5em;
-  margin: 1em auto;
-  border-radius: 4px;
-  background: #fff;  
+  white-space: nowrap;
+  font-size: 1.35em;
+  padding: 1em;
+  border-radius: 2px;
+  background: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,.18);
 }
 
-.siteHead {
-  text-align: center;
-  background: var(--the-mood);
-}
-
-.siteHead > .contacts {
-  margin: .5em;
-  padding: .5em;
-}
-
-.iconDetail {
-  display: inline-flex;
-  justify-content: center;
+.main-hero {
+  display: flex;
+  justify-content: space-around;
   align-content: center;
   align-items: center;
-  flex-flow: row nowrap;
-  text-align: center;
-  overflow: visible;
-  background: #fff;
-  border-radius: 100%;
-  cursor: pointer;
-  height: 40px;
-  width: 40px;
-  margin: .5em;
-  font-size: 21px;
-  box-shadow: 0 2px 4px rgba(0,0,0,.14);
-  transition: all 130ms ease-in-out;
+  flex-flow: row wrap;
+  width: 82vw;
+  min-width: 300px;
+  padding: 1em 0;
+  border-bottom: 1px solid var(--the-mood);
+  box-shadow: 0 1em 20px -10px hsla(39, 74%, 79%, 0.24);
+  margin: 0 auto;
 }
 
-.iconDetail {
-  margin-left: 5.5em;
-}
-
-.iconDetail > span {
+.reach-me > a {
   display: flex;
   justify-content: center;
   align-content: center;
   align-items: center;
-  flex-flow: row nowrap;
+  flex-flow: row wrap;
   text-align: center;
-  position: absolute;
-  pointer-events: none;
-  right: 100%;
-  top: 0;
-  opacity: 0;
-  border-radius: 4px;
-  height: 100%;
-  width: 60px;
-  font-size: 12px;
-  background: #fff;
-  transition: all 130ms ease-in-out;
+  border-radius: 100%;
+  border: 1px solid hsl(0, 0%, 30%);
+  font-size: 1.25em;
+  height: 40px;
+  width: 40px;
+  margin: 5px;
+  box-shadow: 0 1px 4px 2px hsla(39, 74%, 60%, .24);
+  color: var(--the-mood);
+  border: 2px solid var(--the-mood);
+  background: hsl(0, 0%, 33%);
+  transition: all 140ms ease-in-out;
 }
 
-.iconDetail:hover > span {
-  pointer-events: all;
+.reach-me>a>span {
+  position: absolute;
+  box-sizing: content-box;
+  width: 160px;
+  left: calc(50% - 80px);
+  top: 110%;
+  font-size: 0;
+  font-weight: normal;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 140ms ease-in-out;
+}
+
+.reach-me>a:hover > span {
+  font-size: .8em;
   opacity: 1;
+  color: hsl(0, 0%, 33%);
+}
+
+.reach-me>a:hover {
+  text-shadow: 0 1px 3px rgba(245, 179, 93, 0.14);
+  transform: translateY(-4px);
+  font-size: 1.3em;
 }
 
 @media all and (max-width: 760px) {
