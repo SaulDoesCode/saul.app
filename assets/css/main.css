@@ -3,6 +3,8 @@
 :root {
   --the-mood: hsl(39, 74%, 79%);
   --primary-text: hsl(0, 0%, 30%);
+  --side-bar-color: hsl(39, 74%, 70%);
+  --side-bar-bg: linear-gradient(0deg, hsl(39, 74%, 66%) 25%, hsl(36, 27%, 56%) 100%);
 }
 
 *, * * {
@@ -13,6 +15,8 @@
 html {
   overflow-y: auto;
   overflow-x: hidden;
+  width: 100vw;
+  height: 100vh;
 }
 
 body {
@@ -20,8 +24,9 @@ body {
   color: var(--primary-text);
   background: #fff;
   color: hsl(0, 0%, 30%);
-  width: 100vw;
+  width: 100%;
   height: 100vh;
+  transition: all 160ms ease-out;
 }
 
 .flexCenterSpacedHorizonal {
@@ -67,7 +72,7 @@ a:active {
   align-content: center;
   align-items: center;
   flex-flow: row wrap;
-  width: 82vw;
+  width: 85%;
   min-width: 300px;
   padding: 1em 0;
   border-bottom: 1px solid var(--the-mood);
@@ -120,12 +125,279 @@ a:active {
   font-size: 1.3em;
 }
 
+/* side-bar custom element styling */
+
+side-bar,
+sb-menu {
+  display: flex;
+  justify-content: flex-start;
+  align-content: center;
+  align-items: center;
+  flex-flow: column nowrap;
+}
+
+side-bar {
+  position: fixed;
+  display: flex;
+  text-align: center;
+  height: 100%;
+  width: 200px;
+  background: var(--side-bar-bg);
+  transform: translateX(-100%);
+  color: #fff;
+  left: 0;
+  top: 0;
+  box-shadow: 0 0 4px rgba(0, 0, 0, .25);
+  transition: all 180ms ease-in-out;
+  z-index: 10;
+}
+
+side-bar[open] {
+  transform: translateX(0);
+}
+
+side-bar .selected,
+sb-menu[open]>.selected {
+  background: #fff !important;
+  color: dimgray;
+  margin: 6px;
+  height: calc(3.5em - 12px);
+  width: calc(100% - 12px);
+  border-radius: 6px;
+}
+
+side-bar .selected:hover {
+  color: var(--side-bar-color);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+}
+
+side-bar>.toggler {
+  position: absolute;
+  top: 5px;
+  left: calc(100% + 5px);
+  width: 1.5em;
+  height: 1.5em;
+  line-height: 1.5em;
+  background: var(--side-bar-bg);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.14));
+  border-radius: 100%;
+  cursor: pointer;
+  transform: rotate(180deg);
+  transition: all 520ms ease-in-out;
+}
+
+side-bar[open]>.toggler {
+  transform: rotate(-180deg);
+}
+
+sb-menu {
+  width: 100%;
+  margin-top: .5em;
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+}
+
+sb-menu,
+sb-menu-title {
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+}
+
+sb-menu>sb-menu-title::before {
+  display: inline-block;
+  margin-right: 5px;
+  font-weight: bold;
+  content: '+';
+}
+
+sb-menu[open]>sb-menu-title::before {
+  content: '-';
+}
+
+sb-menu[open] {
+  border-top: 1px solid hsla(0, 0%, 100%, .15);
+  border-bottom: 1px solid hsla(0, 0%, 100%, .15);
+}
+
+sb-menu>.selected {
+  height: 0;
+  margin: 0;
+}
+
+sb-menu[open]>sb-menu-title {
+  border-bottom: 1px solid hsla(0, 0%, 100%, .15);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .12);
+  margin-bottom: .75em;
+}
+
+sb-menu:hover {
+  border-top: 1px solid hsla(0, 0%, 100%, .2);
+  border-bottom: 1px solid hsla(0, 0%, 100%, .2);
+}
+
+sb-menu>sb-item {
+  opacity: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+sb-menu[open]>sb-item {
+  opacity: 1;
+  height: 3.5em;
+  pointer-events: auto;
+}
+
+sb-item {
+  font-size: .9em;
+}
+
+sb-item,
+sb-menu-title {
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  width: 100%;
+  height: 3.5em;
+  cursor: pointer;
+  overflow: hidden;
+  user-select: none;
+  user-drag: none;
+  transition: all 140ms ease-in-out;
+}
+
+sb-item:not(.selected):hover {
+  transform: translateY(-2px);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .14);
+}
+
+/* MAIN CONTENT Starts here */
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+main.content {
+  width: 85%;
+  padding: 1em;
+  margin: 1em auto;
+  text-align: center;
+}
+
+main.content > * {
+  animation: fadeIn 300ms ease-in-out;
+}
+
+.cookie-toast {
+  position: fixed;
+  display: block;
+  text-align: center;
+  bottom: .5em;
+  right: .5em;
+  font-style: 1.02em;
+  max-width: 280px;
+  height: auto;
+  background: var(--the-mood);
+  padding: .5em;
+  border-radius: 4px;
+}
+
+.cookie-toast > div {
+  display: inline-block;
+  font-weight: bold;
+  font-style: 1.1em;
+  cursor: pointer;
+  margin: 4px;
+  padding: 4px;
+  border-radius: 4px;
+  background: hsl(39, 50%, 46%);
+  color: #fff;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, .14);
+}
+
 @media all and (max-width: 760px) {
+  body {
+    left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
   main {
     display: block;
   }
-
-  main > article {
+  main>article {
     margin: 3em auto;
+  }
+
+  side-bar {
+    position: relative;
+    height: auto;
+    width: 100%;  
+    transform: translateY(-100%);
+    box-shadow: 0 0 4px rgba(0, 0, 0, .16);
+    margin-bottom: calc(-380px + 3em);
+  }
+
+  side-bar[open] {
+    margin-bottom: 3em;
+    transform: translateY(0);
+  }
+
+  side-bar>.toggler {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+    top: 102%;
+    left: calc(50% - 15px);
+    width: 30px;
+    height: 30px;
+    border-radius: 100%;
+    color: #fff;
+  }
+  
+  side-bar>.toggler::before {
+     font-family: "fontello";
+     font-style: normal;
+     font-weight: normal;
+     font-size: 16px !important;
+     speak: none;
+     display: inline-block;
+     text-decoration: inherit;
+     width: 1em;
+     margin-right: .2em;
+     text-align: center;
+     /* opacity: .8; */
+
+     /* For safety - reset parent styles, that can break glyph codes*/
+
+     font-variant: normal;
+     text-transform: none;
+     /* fix buttons height, for twitter bootstrap */
+
+     line-height: 1em;
+     /* Animation center compensation - margins should be symmetric */
+
+     /* remove if not needed */
+
+     margin-left: .2em;
+     /* you can be more comfortable with increased icons size */
+
+     /* font-size: 120%; */
+
+     /* Font smoothing. That was taken from TWBS */
+
+     -webkit-font-smoothing: antialiased;
+     -moz-osx-font-smoothing: grayscale;
+      content: '\e819';
+  }
+
+  side-bar[open]>.toggler::before {
+    content: '\e818';
   }
 }
