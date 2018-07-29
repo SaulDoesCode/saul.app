@@ -1,9 +1,18 @@
 <side-bar open>
   <img alt="Saul van der Walt" title="Saul van der Walt" src="https://miro.medium.com/fit/c/240/240/1*ay7mOSadS-7z6ZH2pGSk2A.jpeg"
     style="border-radius: 100%; border: 2px solid var(--the-mood); margin: .5em auto;" class="j bx by bz" width="160" height="160">
-
+  <header class="destructureMe">
+    <span class="token keyword">const</span>
+    <span class="token punctuation">{</span>
+    coder
+    <span class="token punctuation">,</span>
+    thinker
+    <span class="token punctuation">}</span>
+    <span class="token operator">=</span> saul
+  </header>
   <sb-item class="selected" route-link="home">Home</sb-item>
   <sb-item route-link="about">About</sb-item>
+  <sb-item route-link="useful-links">Useful links</sb-item>
   <sb-menu>
     <sb-menu-title>More Things</sb-menu-title>
     <sb-item route-link="rilti">rilti - frontend framework</sb-item>
@@ -11,26 +20,17 @@
 </side-bar>
 
 <section class="main-hero">
-  <header class="destructureMe">
-    <span class="token keyword">const</span>
-    <span class="token punctuation">{</span>
-    coder<span class="token punctuation">,</span>
-    thinker
-    <span class="token punctuation">}</span>
-    <span class="token operator">=</span> saul
-  </header>
-
   <div class="flexCenterSpacedHorizonal reach-me">
     <a class="icon-mail" href="mailto:me@saul.app">
       <span>me@saul.app</span>
     </a>
-    <a class="icon-github" href="https://github.com/sauldoescode" target="_blank">
+    <a class="icon-github" href="https://github.com/sauldoescode" target="_blank" rel="noopener">
       <span>github</span>
     </a>
-    <a class="icon-codeopen" href="https://codepen.io/SaulDoesCode/" target="_blank">
+    <a class="icon-codeopen" href="https://codepen.io/SaulDoesCode/" target="_blank" rel="noopener">
       <span>codepen</span>
     </a>
-    <a class="icon-medium" href="https://medium.com/@saulvdw" target="_blank">
+    <a class="icon-medium" href="https://medium.com/@saulvdw" target="_blank" rel="noopener">
       <span>medium</span>
     </a>
   </div>
@@ -40,9 +40,8 @@
 
 <template route="home">
   <p>
-    So this is my personal site so far, it's ehm... a work in progress.
-    Yes, let's call it that. But someday... SOMEDAY!
-    I tell you there's gonna be stuff here worth lookin at.
+    So this is my personal site so far, it's ehm... a work in progress. Yes, let's call it that. But someday... SOMEDAY! I tell
+    you there's gonna be stuff here worth lookin at.
   </p>
 </template>
 
@@ -55,14 +54,28 @@
 <template route="rilti">
   <p>
     This site was built with that
-    <a href="https://github.com/SaulDoesCode/rilti.js" target="_blank">rilti</a> magic.
+    <a href="https://github.com/SaulDoesCode/rilti.js" target="_blank" rel="noopener">rilti</a> magic.
   </p>
 </template>
 
+<template route="useful-links">
+  <h1>Here's some links you may find useful or interesting</h1>
+  <br>
+  <link-list title="Writing">
+    <a href="http://www.thepunctuationguide.com/" target="_blank" rel="noopener">
+      The Punctuation Guide - get jiggy with punctuation
+    </a>
+    <a href="https://www2.le.ac.uk/offices/ld/resources/writing/writing-resources/essay-terms" target="_blank" rel="noopener">
+      Essay terms explained
+    </a>
+    <a href="http://writersdiet.com/test.php" target="_blank" rel="noopener">
+      The Writer’s Diet: The Test - put in your writing, see how it fairs
+    </a>
+  </link-list>
+</template>
 
 <section class="cookie-toast">
-  psst... this site's got cookies, no worries though I don't want your info.
-  It's just so I can see how my little site is doing,
+  psst... this site's got cookies, no worries though I don't want your info. It's just so I can see how my little site is doing,
   and to cache some resources to make it faster when you return.
   <div onclick="this.parentNode.remove(); localStorage.setItem('cookie-ok', true)">Ok?</div>
 </section>
