@@ -1,5 +1,5 @@
 const {component, isStr, isObj, merge, $, run} = rilti
-const {a, p, b, img, aside, div, section, h1, h2, h3, h4, main} = rilti.dom
+const {ul, li, a, p, b, img, aside, div, section, header, h1, h2, h3, h4, main} = rilti.dom
 
 if (!location.hash) location.hash = '#home'
 
@@ -178,7 +178,7 @@ if (!location.hash) location.hash = '#home'
       if (!routes.has(name) || name === routes.active) return
       if (name !== location.hash || '#') location.hash = name
       const route = routes.get(name)
-      if (route && route.consumers && route.consumers.size) {
+      if (route.consumers && route.consumers.size) {
         each(route.consumers, consume => consume(route, true, name))
       }
       if (routes.activeBinds.size) {
@@ -217,6 +217,18 @@ if (!location.hash) location.hash = '#home'
     directive('route-link', {
       init(el, RLName) {
         el.state.RLL = el.on.click(e => route.activate(el.attr['route-link']))
+        run(() => {
+          let hash = el.attr['route-link']
+          if (hash[0] !== '#') hash = '#' + hash
+          if (location.hash === hash) el.click()
+        })
+      },
+      update (el) {
+        run(() => {
+          let hash = el.attr['route-link']
+          if (hash[0] !== '#') hash = '#' + hash
+          if (location.hash === hash) el.click()
+        })
       },
       remove(el) {
         el.state.RLL.off()
@@ -226,3 +238,18 @@ if (!location.hash) location.hash = '#home'
 
     on.hashchange(window, e => route.activate())
   }
+
+
+component('link-list', {
+  mount (ll) {
+    const {title} = ll.attr
+    if (title) header({$: ll, attr: {title}}, title)
+    delete ll.attr.title
+    const list = ul()
+    for (const link of ll.$children) {
+      if (link.href) link.attr.title = link.href
+      li({$: list}, link)
+    }
+    list.appendTo(ll)
+  }
+})
