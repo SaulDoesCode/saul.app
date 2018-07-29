@@ -1,13 +1,13 @@
 @import url('https://fonts.googleapis.com/css?family=Nunito');
-
 :root {
-  --the-mood: hsl(39, 74%, 79%);
+  --the-mood: hsl(39, 70%, 76%);
   --primary-text: hsl(0, 0%, 30%);
   --side-bar-color: hsl(39, 74%, 70%);
-  --side-bar-bg: linear-gradient(0deg, hsl(39, 74%, 66%) 25%, hsl(36, 27%, 56%) 100%);
+  --side-bar-bg: linear-gradient(0deg, hsl(39, 74%, 76%) 25%, hsl(36, 27%, 66%) 100%);
 }
 
-*, * * {
+*,
+* * {
   box-sizing: border-box;
   position: relative;
 }
@@ -22,10 +22,12 @@ html {
 body {
   font-family: Nunito, Verdunda, Helvetica, Arial, sans-serif;
   color: var(--primary-text);
-  background: #fff;
   color: hsl(0, 0%, 30%);
   width: 100%;
   height: 100vh;
+  overflow: hidden;
+  background: #fff;
+  background: linear-gradient(172deg, #fff 40%, #faecd0 100%);
   transition: all 160ms ease-out;
 }
 
@@ -38,10 +40,11 @@ body {
 }
 
 .liftedShadow {
-  box-shadow: 0 2px 16px rgba(0,0,0,.14);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, .14);
 }
 
-a, a:visited {
+a,
+a:visited {
   color: inherit;
   font-weight: bold;
   text-decoration: none;
@@ -53,34 +56,32 @@ a:hover {
 }
 
 a:active {
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,.18)) brightness(95%);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .18)) brightness(95%);
 }
 
 .destructureMe {
   display: inline-block;
   white-space: nowrap;
-  font-size: 1.35em;
-  padding: 1em;
+  font-size: .8em;
+  padding: .5em;
+  margin-bottom: 1em;
   border-radius: 2px;
-  background: #fff;
-  text-shadow: 0 1px 3px rgba(0,0,0,.18);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .18);
 }
 
 .main-hero {
   display: flex;
-  justify-content: space-around;
+  justify-content: flex-end;
   align-content: center;
   align-items: center;
   flex-flow: row wrap;
-  width: 85%;
+  width: 95%;
   min-width: 300px;
-  padding: 1em 0;
-  border-bottom: 1px solid var(--the-mood);
-  box-shadow: 0 1em 20px -10px hsla(39, 74%, 79%, 0.24);
-  margin: 0 auto;
+  /*box-shadow: 0 1em 25px -13px rgba(0, 0, 0, .1);*/
+  margin: .25em auto 1.5em auto;
 }
 
-.reach-me > a {
+.reach-me>a {
   display: flex;
   justify-content: center;
   align-content: center;
@@ -88,15 +89,16 @@ a:active {
   flex-flow: row wrap;
   text-align: center;
   border-radius: 100%;
-  border: 1px solid hsl(0, 0%, 30%);
-  font-size: 1.25em;
+  /*border: 1px solid hsl(0, 0%, 24%);*/
+  font-size: 1.3em;
   height: 40px;
   width: 40px;
   margin: 5px;
-  box-shadow: 0 1px 4px 2px hsla(39, 74%, 60%, .24);
-  color: var(--the-mood);
-  border: 2px solid var(--the-mood);
-  background: hsl(0, 0%, 33%);
+  -webkit-filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .14));
+  -moz-filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .14));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .14));
+  color: #000;
+  background: var(--the-mood);
   transition: all 140ms ease-in-out;
 }
 
@@ -105,7 +107,7 @@ a:active {
   box-sizing: content-box;
   width: 160px;
   left: calc(50% - 80px);
-  top: 110%;
+  top: 104%;
   font-size: 0;
   font-weight: normal;
   opacity: 0;
@@ -113,10 +115,10 @@ a:active {
   transition: all 140ms ease-in-out;
 }
 
-.reach-me>a:hover > span {
+.reach-me>a:hover>span {
   font-size: .8em;
   opacity: 1;
-  color: hsl(0, 0%, 33%);
+  color: hsl(0, 0%, 28%);
 }
 
 .reach-me>a:hover {
@@ -144,9 +146,11 @@ side-bar {
   width: 200px;
   background: var(--side-bar-bg);
   transform: translateX(-100%);
-  color: #fff;
   left: 0;
   top: 0;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1.1em;
   box-shadow: 0 0 4px rgba(0, 0, 0, .25);
   transition: all 180ms ease-in-out;
   z-index: 10;
@@ -173,21 +177,50 @@ side-bar .selected:hover {
 
 side-bar>.toggler {
   position: absolute;
+  display: inline-flex;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
   top: 5px;
   left: calc(100% + 5px);
   width: 1.5em;
   height: 1.5em;
-  line-height: 1.5em;
-  background: var(--side-bar-bg);
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,.14));
+  background: var(--the-mood);
+  color: #000;
+  -webkit-filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .14));
+  -moz-filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .14));
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .14));
   border-radius: 100%;
   cursor: pointer;
-  transform: rotate(180deg);
-  transition: all 520ms ease-in-out;
+  transition: all 420ms ease-in-out;
 }
 
 side-bar[open]>.toggler {
-  transform: rotate(-180deg);
+  border-radius: 100%;
+  height: 1.5em;
+}
+
+side-bar>.toggler::before {
+  font-family: "fontello";
+  font-style: normal;
+  font-weight: normal;
+  font-size: 20px;
+  speak: none;
+  text-decoration: inherit;
+  width: 1em;
+  margin-right: .2em;
+  text-align: center;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1em;
+  margin-left: .2em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  content: '\e817';
+}
+
+side-bar[open]>.toggler::before {
+  content: '\e816';
 }
 
 sb-menu {
@@ -238,6 +271,7 @@ sb-menu:hover {
 sb-menu>sb-item {
   opacity: 0;
   height: 0;
+  font-size: .9em;
   pointer-events: none;
 }
 
@@ -271,6 +305,38 @@ sb-item:not(.selected):hover {
   text-shadow: 0 1px 3px rgba(0, 0, 0, .14);
 }
 
+link-list {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-content: center;
+  align-items: center;
+  flex-flow: row wrap;
+  text-align: center;
+  padding: .5em;
+  margin: 1em auto;
+  border-top: 1px solid var(--the-mood, hsl(0, 0%, 33%));
+  border-bottom: 1px solid var(--the-mood, hsl(0, 0%, 33%));
+}
+
+link-list>header {
+  display: inline-block;
+  border: 1px solid var(--the-mood, hsl(0, 0%, 33%));
+  padding: .5em;
+  margin: .5em;
+  border-radius: 3px;
+  font-size: 1.25em;
+}
+
+link-list>ul {
+  margin: 0;
+  text-align: left;
+}
+
+link-list>ul>li {
+  margin: .5em;
+}
+
 /* MAIN CONTENT Starts here */
 
 @keyframes fadeIn {
@@ -289,7 +355,7 @@ main.content {
   text-align: center;
 }
 
-main.content > * {
+main.content>* {
   animation: fadeIn 300ms ease-in-out;
 }
 
@@ -307,7 +373,7 @@ main.content > * {
   border-radius: 4px;
 }
 
-.cookie-toast > div {
+.cookie-toast>div {
   display: inline-block;
   font-weight: bold;
   font-style: 1.1em;
@@ -326,78 +392,42 @@ main.content > * {
     padding: 0 !important;
     width: 100% !important;
   }
-
+  .main-hero {
+    justify-content: space-around;
+  }
   main {
     display: block;
   }
   main>article {
     margin: 3em auto;
   }
-
   side-bar {
     position: relative;
     height: auto;
-    width: 100%;  
+    width: 100%;
     transform: translateY(-100%);
     box-shadow: 0 0 4px rgba(0, 0, 0, .16);
-    margin-bottom: calc(-380px + 3em);
+    margin-bottom: calc(-460px + 3em);
   }
-
   side-bar[open] {
     margin-bottom: 3em;
     transform: translateY(0);
   }
-
-  side-bar>.toggler {
-    display: flex;
-    justify-content: center;
-    align-content: center;
-    align-items: center;
+  side-bar>.toggler,
+  side-bar[open]>.toggler {
     top: 102%;
-    left: calc(50% - 15px);
+    left: calc(50% - 20px);
     width: 30px;
-    height: 30px;
-    border-radius: 100%;
-    color: #fff;
+    height: auto;
+    border-radius: 2px;
+    border: 0;
   }
-  
-  side-bar>.toggler::before {
-     font-family: "fontello";
-     font-style: normal;
-     font-weight: normal;
-     font-size: 16px !important;
-     speak: none;
-     display: inline-block;
-     text-decoration: inherit;
-     width: 1em;
-     margin-right: .2em;
-     text-align: center;
-     /* opacity: .8; */
-
-     /* For safety - reset parent styles, that can break glyph codes*/
-
-     font-variant: normal;
-     text-transform: none;
-     /* fix buttons height, for twitter bootstrap */
-
-     line-height: 1em;
-     /* Animation center compensation - margins should be symmetric */
-
-     /* remove if not needed */
-
-     margin-left: .2em;
-     /* you can be more comfortable with increased icons size */
-
-     /* font-size: 120%; */
-
-     /* Font smoothing. That was taken from TWBS */
-
-     -webkit-font-smoothing: antialiased;
-     -moz-osx-font-smoothing: grayscale;
-      content: '\e819';
-  }
-
   side-bar[open]>.toggler::before {
+    font-size: 1em !important;
+    content: '\e81c';
+  }
+  side-bar>.toggler::before {
+    font-size: 1em !important;
     content: '\e818';
   }
 }
