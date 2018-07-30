@@ -3,26 +3,48 @@ const {ul, li, a, p, b, img, aside, div, section, header, h1, h2, h3, h4, main} 
 
 if (!location.hash) location.hash = '#home'
 
-/*
-  <div class="idea">
-    <header>nominalism as a thinking skill</header>
-    <p>
-      Awareness that, universals do not exist.
-      Every object is discrete, even a class instance because no 2 objects exist in the same exact place, time and way.
-      Relationships, between objects or phenoma, is a mental abstraction helping us construct a rulebook, narrative of events
-      and a sense of contextual significance and state in terms of what we are able to perceive, know and
-      the extent to which we can conceptualize, integrate, understand and apply it
-      applying and projecting ourselves at the world thereby.
-      Likewise no two problems (errors, design, creative) are the same, each varies ever so slightly.
-      Therefore by being consciously aware, that what we perceive is directly influenced by the abstractions of our brains,
-      learned knowledge and beliefs,
-      we gain the oportunity to sift throw what we are and see more clearly what is there; climbing out the proverbial box.
-      Note universals are usefull as a means to understand the chaos of a reality, but it is not in it self reality
-      observe for example the way facts change as either as new knowledge is gained changing the model or
-      sociocultural presures or change alters the general perception of how or if fact is fact.
-    </p>
-  </div>
-*/
+component('link-list', {
+  mount (ll) {
+    const {title} = ll.attr
+    if (title) header({$: ll, attr: {title}}, title)
+    delete ll.attr.title
+    const list = ul()
+    for (const link of ll.$children) {
+      if (link.href) link.attr.title = link.href
+      li({$: list}, link)
+    }
+    list.appendTo(ll)
+  }
+})
+
+  component('idea-block', {
+    methods: {
+      toggle(ib, open = !ib.open) {
+        ib.dispatchEvent(Object.assign(new CustomEvent('toggle'), {
+          open: ib.open = open
+        }))
+      }
+    },
+    props: {
+      header: ib => header({onclick: e => ib.toggle()}),
+      accessors: {
+        open: {
+          get: ib => ib.attr.has('open'),
+          set: (ib, open) => ib.attrToggle('open', !!open)
+        }
+      }
+    },
+    mount (ib) {
+      const content = p(ib.txt)
+      ib.txt = ''
+      ib.append(ib.header, content)
+    },
+    attr: {
+      name (el, name) {
+        el.header.attr({name}).txt = name
+      }
+    }
+  })
 
 {
 
@@ -238,18 +260,3 @@ if (!location.hash) location.hash = '#home'
 
     on.hashchange(window, e => route.activate())
   }
-
-
-component('link-list', {
-  mount (ll) {
-    const {title} = ll.attr
-    if (title) header({$: ll, attr: {title}}, title)
-    delete ll.attr.title
-    const list = ul()
-    for (const link of ll.$children) {
-      if (link.href) link.attr.title = link.href
-      li({$: list}, link)
-    }
-    list.appendTo(ll)
-  }
-})
