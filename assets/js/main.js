@@ -24,7 +24,11 @@
       if (localStorage.getItem('cookie-ok')) {
         document.querySelector('.cookie-toast').remove()
       }
-      cacheScript('https://rawgit.com/SaulDoesCode/rilti.js/experimental/dist/rilti.min.js', src => {
+      cacheScript(
+        location.host.includes('localhost') ?
+        'http://localhost:2018/dist/rilti.js':
+        'https://rawgit.com/SaulDoesCode/rilti.js/experimental/dist/rilti.min.js'
+        , src => {
         const script = document.createElement('script')
         script.textContent = src + ';\n;'
         cacheScript('/assets/js/view.js', src => {
