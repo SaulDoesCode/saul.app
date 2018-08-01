@@ -491,6 +491,13 @@ main.content>* {
   text-shadow: 0 2px 3px rgba(0, 0, 0, .14);
 }
 
+.cookie-toast>div::before {
+  content: ' Ok? ';
+}
+.cookie-toast>div:hover::before {
+  content: ' Ok ';
+}
+
 @media all and (max-width: 760px) {
   body {
     left: 0 !important;
