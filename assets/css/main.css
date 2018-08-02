@@ -46,8 +46,11 @@ body {
   font-family: Nunito, Verdunda, Helvetica, Arial, sans-serif;
   color: var(--primary-text);
   color: hsl(0, 0%, 30%);
+  position: fixed;
+  top: 0;
+  right: 0;
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
   background: #fff;
