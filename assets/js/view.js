@@ -121,6 +121,14 @@ component('idea-block', {
   })
 
   component('side-bar', toggleAbleOpenAttr({
+    methods: {
+      adjustBody(sb) {
+        run(() => {
+          document.body.style.width = sb.open && window.innerWidth > 760 ?
+            `calc(100% - ${sb.offsetWidth}px)` : ''
+        })
+      }
+    },
     props: {
       accessors: {
         selected: {
@@ -151,21 +159,12 @@ component('idea-block', {
           el.selected = target
         }
       })
+      el.adjustBody()
+      el.on.toggle(el.adjustBody)
     }
   }))
 
   component('sb-menu', toggleAbleOpenAttr({}, 'sb-menu-title'))
-
-  const sidebar = $('side-bar')
-  const adjustBody = () => {
-    const {open} = sidebar
-    $(document.body).css({
-      width: open ? 'calc(100% - 200px)' : '',
-      left: open ? '200px' : ''
-    })
-  }
-  sidebar.on.toggle(adjustBody)
-  run(adjustBody)
 }
 
 { /* global rilti */
