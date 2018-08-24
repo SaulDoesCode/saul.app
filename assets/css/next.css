@@ -105,7 +105,7 @@ nav.hero {
   background:#fff;
   color: var(--the-mood);
   width: 100%;
-  min-height: 30vh;
+  min-height: 25vh;
   padding: 0 4em 0 1em;
   margin-bottom: 2em;
   box-shadow: 0 5px 5px rgba(0, 0, 0, .1);
@@ -212,9 +212,9 @@ section.ideas {
   color: #fff;
   background: hsl(0, 0%, 18%);
   border-radius: 4px;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 1fr 220px;
   grid-template-rows: auto 1fr;
-  grid-template-areas: "Header Header" "Names Content";
+  grid-template-areas: "Header Names" "Content Names";
 }
 
 section.ideas > header {
@@ -246,10 +246,10 @@ section.ideas > .ideas {
   align-items: center;
   flex-flow: column wrap;
   grid-area: Names;
-  border-right: 1px solid hsl(0, 0%, 28%);
-  box-shadow: 5px 0 4px -4px rgba(0, 0, 0, .25);
-  padding: 0 6px 0 5px;
-  margin: 5px 0 5px 0;
+  border-left: 1px solid hsl(0, 0%, 28%);
+  box-shadow: -5px 0 4px -4px rgba(0, 0, 0, .25);
+  padding: 0 5px 0 6px;
+  margin: 0 0 5px 0;
   -webkit-user-select: none;
   -moz-user-select: none;
   user-select: none;
@@ -291,7 +291,7 @@ section.ideas>.ideas>.idea.active {
 section.ideas > article {
   grid-area: Content;
   padding: 5px 1em;
-  font-size: 1.15em;
+  font-size: 1.1em;
   line-height: 1.3;
 }
 
