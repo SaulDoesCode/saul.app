@@ -37,9 +37,7 @@ li:hover::before {
 }
 
 html {
-  overflow: hidden;
   width: 100vw;
-  height: 100vh;
 }
 
 body {
@@ -49,6 +47,7 @@ body {
   position: fixed;
   top: 0;
   right: 0;
+  margin: 0;
   width: 100%;
   min-height: 100vh;
   overflow-y: auto;
@@ -89,7 +88,8 @@ a:active {
 .destructureMe {
   display: inline-block;
   white-space: nowrap;
-  font-size: .8em;
+  font-size: .75em;
+  letter-spacing: 0;
   padding: .5em;
   margin-bottom: 1em;
   border-radius: 2px;
@@ -110,8 +110,8 @@ a:active {
 
 .reach-me {
    position: absolute;
-   top: .5em;
-   right: .5em;
+   bottom: .1em;
+   right: .1em;
    display: flex;
    justify-content: center;
    align-content: center;
@@ -383,60 +383,65 @@ link-list>ul>li {
 }
 
 ideas-section {
-  display: flex;
-  justify-content: space-around;
-  align-content: center;
-  align-items: center;
-  flex-flow: column nowrap;
+  display: grid;
+  grid-template-columns: minmax(25%, 150px) 1fr;
   background: hsl(0, 0%, 28%);
   color: var(--the-mood);
   border: 1px solid var(--the-mood);
+  min-height: 45vh;
   border-radius: 4px;
 }
 
 idea-grid {
-  flex: 1 1 auto;
   display: flex;
-  justify-content: space-around;
+  justify-content: flex-start;
   align-content: center;
   align-items: center;
-  flex-flow: row wrap;
+  flex-flow: column wrap;
   width: 100%;
-  margin: .5em auto;
-  padding: .5em;
+  margin: 0;
+  padding: .75em;
+  background: hsl(0,0%,33%);
+  box-shadow: inset -3px 0 3px -1px rgba(0, 0, 0, .14);
   overflow: hidden;
 }
 
 idea-block {
-  display: inline-flex;
+  position: relative;
+  display: flex;
   justify-content: center;
   align-content: center;
   align-items: center;
   flex-flow: row wrap;
-  width: auto;
+  width: 100%;
   height: auto;
-  padding: .5em;
+  padding: .5em .25em;
   margin: .25em;
   cursor: pointer;
-  background: #fff;
-  color: hsl(0, 0%, 28%);
+  background: hsl(0, 0%, 28%);
+  color: var(--the-mood);
+  border: 1px solid var(--the-mood);
   font-size: 1.2em;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .14);
   border-radius: 3px;
 }
 
+idea-block:hover:not(.active) {
+  background: hsl(0, 0%, 33%);
+}
+
 idea-block.active {
-  background: hsl(0, 0%, 28%);
-  color: var(--the-mood);
-  border: 1px solid var(--the-mood);
+  background: #fff;
+  color: hsl(0, 0%, 33%);
+  border: 1px solid transparent;
 }
 
 idea-display {
   flex: 1 1 auto;
   display: flex;
-  justify-content: center;
+  justify-content: space-around;
   align-content: center;
-  align-items: center;
+  align-items: flex-start;
   flex-flow: row wrap;
   margin: .5em auto;
   padding: .8em 1.3em;
@@ -457,9 +462,15 @@ idea-display {
 }
 
 main.content {
+  display: flex;
+  justify-content: space-around;
+  align-content: center;
+  align-items: center;
+  flex-flow: column wrap;
   width: 85%;
+  min-height: 95vh;
   padding: 1em;
-  margin: 1em auto;
+  margin: 0 auto;
   text-align: center;
 }
 
@@ -518,6 +529,7 @@ main.content>* {
     top: 104%;
   }
   main {
+    position: relative;
     display: block;
   }
   main>article {
@@ -551,5 +563,8 @@ main.content>* {
   side-bar>.toggler::before {
     font-size: 1em !important;
     content: '\e818';
+  }
+  ideas-section {
+    display: block;
   }
 }
