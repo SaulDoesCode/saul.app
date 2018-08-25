@@ -6,10 +6,10 @@ const Ideas = {
     same exact place, time and way. Relationships, between objects or phenomena, is a mental abstraction helping us construct
     a rulebook, narrative of events and a sense of contextual significance and state in terms of what we are able to perceive,
     know and the extent to which we can conceptualize, integrate, understand and apply it applying and projecting ourselves
-    at the world thereby. Likewise no two problems (errors, design, creative) are the same, each varies ever so slightly. Therefore
+    at the world thereby. <br> Likewise no two problems (errors, design, creative) are the same, each varies ever so slightly. Therefore
     by being consciously aware, that what we perceive is directly influenced by the abstractions of our brains, learned knowledge
     and beliefs, we gain the opportunity to sift throw what we are and see more clearly what is there; climbing out the proverbial
-    box. Note universals are useful as a means to understand the chaos of a reality, but it is not in it self reality observe
+    box. Note universals are useful as a means to understand the chaos of a reality, but it is not reality itself, observe
     for example the way facts change as either as new knowledge is gained changing the model or sociocultural pressures or change
     alters the general perception of how or if fact is fact.`,
   'organic knowledge': `Not meaning knowledge as representation, familiarity, or, justified true belief, but, rather unity in composure, internal
