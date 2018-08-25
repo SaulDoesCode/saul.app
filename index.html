@@ -5,74 +5,50 @@
   <meta charset="utf-8">
   <meta name="author" content="Saul van der Walt">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Saul van der Walt</title>
+  <title>Saul's personal site</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css">
   <link rel="stylesheet" href="./assets/css/prism-default.css">
-  <link rel="stylesheet" href="./assets/css/main.css">
+  <link rel="stylesheet" href="./assets/css/next.css">
   <link rel="stylesheet" href="./assets/media/icons/fontello/css/fontello.css">
   <!-- script src="./assets/js/prism.js"></script -->
 </head>
 
 <body>
-  <style>
-    @keyframes transition-view {
-      0% {
-        opacity: 0;
-        filter: brightness(0) grayscale(100%);
-      }
-      100% {
-        opacity: 1;
-        filter: brightness(1) grayscale(0%);
-      }
-    }
-
-    .transition-view {
-      animation: transition-view 600ms ease-out;
-    }
-
-    .hero {
-      display: flex;
-      justify-content: center;
-      align-content: center;
-      align-items: center;
-      flex-direction: column;
-      text-align: center;
-      width: 100vw;
-      height: 100vh;
-      padding: 1vh;
-      font-size: 1.1rem;
-      color: #fff;
-      text-shadow: 0 1px 3px rgba(0,0,0,.12);
-      background: var(--the-mood);
-    }
-
-    .come-see {
-      margin: 1em auto;
-      width: 60px;
-      height: 60px;
-      line-height: 60px;
-      border-radius: 100%;
-      border: 1px solid #fff;
-      background: rgba(0,0,0,0);
-      cursor: pointer;
-    }
-
-    .come-see::after {
-      content: '▼';
-    }
-
-    @media all and (max-width: 760px) {
-      section.intro {
-        justify-content: center;
-      }
-    }
-  </style>
-  <header class="hero">
-    <h1>Hi, I'm Saul</h1>
-    <p>Not quite finished but this'll be my personal site.</p>
-    <div class="come-see" title="wanna see what I've done so far?"></div>
-  </header>
-  <script src="./assets/js/main.js" async></script>
+  <nav class="hero">
+    <section class="intro">
+      <img alt="Saul van der Walt" title="Saul van der Walt" src="https://miro.medium.com/fit/c/240/240/1*ay7mOSadS-7z6ZH2pGSk2A.jpeg"
+        style="border-radius: 100%;" width="160" height="160">
+      <header class="destructureMe">
+        <span class="token keyword">const</span>
+        <span class="token punctuation">{</span>
+        coder
+        <span class="token punctuation">,</span>
+        thinker
+        <span class="token punctuation">}</span>
+        <span class="token operator">=</span> saul
+      </header>
+    </section>
+    <aside class="reach-me">
+      <a class="icon-mail" href="mailto:me@saul.app">
+        <span>me@saul.app</span>
+      </a>
+      <a class="icon-github" href="https://github.com/sauldoescode" target="_blank" rel="noopener">
+        <span>github</span>
+      </a>
+      <a class="icon-codeopen" href="https://codepen.io/SaulDoesCode/" target="_blank" rel="noopener">
+        <span>codepen</span>
+      </a>
+      <a class="icon-medium" href="https://medium.com/@saulvdw" target="_blank" rel="noopener">
+        <span>medium</span>
+      </a>
+    </aside>
+  </nav>
+  <section class="cookie-toast">
+    psst... this site's got cookies, no worries though I don't want your info. It's just so I can see how my little site is doing,
+    and to cache some resources to make it faster when you return.
+    <div onclick="this.parentNode.remove(); localStorage.setItem('cookie-ok', true)"></div>
+  </section>
+  <script src="./assets/js/next.js" async></script>
 </body>
 
 </html>
