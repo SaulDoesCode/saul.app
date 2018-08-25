@@ -117,7 +117,8 @@ nav.hero>.intro {
     align-content: center;
     align-items: center;
     flex-flow: column wrap;
-    padding-right: 2em;
+    padding-right: 1em;
+    margin: .5em;
     border-right: 2px solid var(--the-mood);
 }
 
@@ -205,8 +206,8 @@ nav.hero > .intro > h2 {
 section.ideas {
   display: grid;
   height: auto;
-  max-width: 880px;
-  min-height: 430px;
+  max-width: 760px;
+  min-height: auto;
   margin: 1em;
   padding: 2.5px;
   color: #fff;
@@ -224,7 +225,7 @@ section.ideas > header {
   font-size: 1.1em;
   background: hsl(0, 0%, 28%);
   color: #fff;
-  margin: 5px;
+  margin: 5px 7.5px;
   padding: 5px;
   border-radius: 4px;
   text-align: center;
@@ -249,7 +250,7 @@ section.ideas > .ideas {
   border-left: 1px solid hsl(0, 0%, 28%);
   box-shadow: -5px 0 4px -4px rgba(0, 0, 0, .25);
   padding: 0 5px 0 6px;
-  margin: 0 0 5px 0;
+  margin: 5px 0 5px 0;
   -webkit-user-select: none;
   -moz-user-select: none;
   user-select: none;
@@ -275,6 +276,13 @@ section.ideas > .ideas > .idea {
   transition: all 140ms ease-out;
 }
 
+section.ideas>.ideas>.idea:first-of-type {
+  margin-top: 0;
+}
+section.ideas>.ideas>.idea:last-of-type {
+  margin-bottom: 0;
+}
+
 section.ideas>.ideas>.idea:hover:not(.active) {
    border: 1px solid hsl(0, 0%, 22%);
    color: var(--the-mood);
@@ -290,7 +298,7 @@ section.ideas>.ideas>.idea.active {
 
 section.ideas > article {
   grid-area: Content;
-  padding: 5px 1em;
+  padding: 5px 1em 7.5px 1em;
   font-size: 1.1em;
   line-height: 1.3;
 }
