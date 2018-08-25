@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"github.com/sauldoescode/saul.app/backend"
 )
 

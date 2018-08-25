@@ -35,6 +35,11 @@ func Init(configfile string) {
 
 	DevMode = os.Getenv("SAULAPP_DEVMODE") == "true"
 
+	if !DevMode {
+		fmt.Println("What?", DevMode)
+		return
+	}
+
 	Server = echo.New()
 
 	Server.Use(middleware.Static(Config["assets"].(string)))
@@ -44,7 +49,8 @@ func Init(configfile string) {
 		Format: "${method}::${status} ${host}${uri}  \tlag=${latency_human}\n",
 	}))
 
-	fmt.Println("Firing up: " + Config["appname"].(string) + "...")
+	fmt.Println("Firing up: ", Config["appname"], "...")
+	fmt.Println("DevMode: ", DevMode)
 
 	insecurePort := ":"
 	if DevMode {
