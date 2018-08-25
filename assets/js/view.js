@@ -222,9 +222,7 @@ component('idea-block', {
   route.revoke = route => {
     if ( (route = routes.get(route))) {
       if (route.consumers && route.consumers.size) {
-        each(route.consumers, consumer => {
-          if (consumer.revoke) consumer.revoke()
-        })
+        each(route.consumers, consumer => consumer.revoke && consumer.revoke())
         route.consumers.clear()
       }
       routes.delete(route.name)
