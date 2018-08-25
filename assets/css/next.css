@@ -65,12 +65,12 @@ body {
   text-align: center;
   bottom: .5em;
   right: .5em;
-  font-style: 1.02em;
-  max-width: 280px;
+  max-width: 400px;
   height: auto;
-  background: var(--the-mood);
-  padding: .5em;
+  background: #fff;
+  padding: .25em;
   border-radius: 4px;
+  z-index: 5;
 }
 
 .cookie-toast>div {
