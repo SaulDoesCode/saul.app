@@ -119,6 +119,13 @@ func Init(configfile string) {
 	} else {
 		Server.AutoTLSManager.HostPolicy = autocert.HostWhitelist(Config.Get("domain").String())
 		Server.AutoTLSManager.Cache = autocert.DirCache(Config.Get("privates").String())
-		Server.Logger.Fatal(Server.StartAutoTLS(":" + Config.Get("port").String()))
+		err := Server.StartAutoTLS(":" + Config.Get("port").String())
+		if err != nil {
+			Server.Logger.Fatal(Server.StartTLS(
+				":" + Config.Get("port").String(),
+				"/etc/letsencrypt/live/" + Config.Get("domain").String() + "/cert.pem",
+				"/etc/letsencrypt/live/" + Config.Get("domain").String() + "/privkey.pem",
+			))
+		}
 	}
 }
