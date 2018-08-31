@@ -113,6 +113,7 @@ func createUser(email, username string) (User, error) {
 	}
 
 	err = SendEmail(&Email{
+		From:    EmailConf.FromTxt,
 		To:      []string{user.Email},
 		Subject: UnverifiedSubject,
 		Text: []byte(`
@@ -172,6 +173,7 @@ func authenticateUser(user *User) error {
 	}
 
 	err = SendEmail(&Email{
+		From:    EmailConf.FromTxt,
 		To:      []string{user.Email},
 		Subject: UnverifiedSubject,
 		Text: []byte(`

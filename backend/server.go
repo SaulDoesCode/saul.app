@@ -93,6 +93,7 @@ func Init(configfile string) {
 	EmailConf.FromTxt = Config.Get("admin-email.fromtxt").String()
 	EmailConf.Address = EmailConf.Server + ":" + EmailConf.Port
 
+	fmt.Println(EmailConf)
 	startEmailer()
 	defer stopEmailer()
 
