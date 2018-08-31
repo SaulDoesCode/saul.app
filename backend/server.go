@@ -45,7 +45,6 @@ func Init(configfile string) {
 
 	Server = echo.New()
 
-	Server.Use(middleware.Static())
 	Server.Use(middleware.GzipWithConfig(middleware.GzipConfig{Level: 9}))
 	Server.Use(middleware.Recover())
 	Server.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
