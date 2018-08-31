@@ -86,14 +86,14 @@ func Init(configfile string) {
 	}, Config.Get("db_name").String())
 	defer DB.Close()
 
-	EmailConf.Email = Config.Get("admin-email.email").String()
-	EmailConf.Server = Config.Get("admin-email.server").String()
-	EmailConf.Port = Config.Get("admin-email.port").String()
-	EmailConf.Password = Config.Get("admin-email.password").String()
-	EmailConf.FromTxt = Config.Get("admin-email.fromtxt").String()
+	EmailConf.Email = Config.Get("admin_email.email").String()
+	EmailConf.Server = Config.Get("admin_email.server").String()
+	EmailConf.Port = Config.Get("admin_email.port").String()
+	EmailConf.Password = Config.Get("admin_email.password").String()
+	EmailConf.FromTxt = Config.Get("admin_email.fromtxt").String()
 	EmailConf.Address = EmailConf.Server + ":" + EmailConf.Port
 
-	fmt.Println(EmailConf)
+	fmt.Println(EmailConf.Address, EmailConf.FromTxt)
 	startEmailer()
 	defer stopEmailer()
 
