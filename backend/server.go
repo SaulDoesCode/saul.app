@@ -106,6 +106,10 @@ func Init(configfile string) {
 			Config.Get("https_cert").String(),
 			Config.Get("https_key").String(),
 		))
+
+		Server.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+			Format: "${method}::${status} ${host}${uri}  \tlag=${latency_human}\n",
+		}))
 	} else {
 		Server.AutoTLSManager.HostPolicy = autocert.HostWhitelist(Config.Get("domain").String())
 		Server.AutoTLSManager.Cache = autocert.DirCache(Config.Get("privates").String())
