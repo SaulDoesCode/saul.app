@@ -100,8 +100,11 @@ func createUser(email, username string) (User, error) {
 	}
 
 	err := DB.Users.Insert(user)
-	if DevMode {
-		fmt.Println("createUser - error: ", err)
+	if err != nil {
+		if DevMode {
+			fmt.Println("createUser - error: ", err)
+		}
+		return user, err
 	}
 
 	magicLink := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
