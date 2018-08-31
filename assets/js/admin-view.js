@@ -31,18 +31,25 @@ const authform = section.auth({
 }, ({state}) => [
   div.email(
     label('email'),
-    input({type: 'email', name: 'email'}, state.$email)
+    input({
+      type: 'email',
+      name: 'email',
+      autocomplete: 'email',
+      required: true
+    }, state.$email)
   ),
   div.username(
     label('username'),
     input({
       type: 'text',
       name: 'username',
-      pattern: '[a-zA-Z0-9._-]{3,50}'
+      pattern: '[a-zA-Z0-9._-]{3,50}',
+      autocomplete: 'username',
+      required: true
     }, state.$username)
   ),
   button.submit({
     onclick (e) { authenticate(state.email, state.username) }
   }, 'Go!'),
-  div(`Your username is`, b(state.$username), `and your email is `, b(state.$email), '.')
+  div(`Your username is`, state.$username, `and your email is `, state.$email, '.')
 ])
