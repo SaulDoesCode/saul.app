@@ -148,6 +148,12 @@ If it doesn't work try logging in again from https://saul.app.
 </html>`),
 	})
 
+	if err != nil {
+		if DevMode {
+			fmt.Println("createUser - emailing error: ", err)
+		}
+	}
+
 	return user, err
 }
 

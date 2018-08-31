@@ -64,7 +64,15 @@ func startEmailer() {
 					pushed.Email.Headers = textproto.MIMEHeader{}
 				}
 
-				pushed.Error <- EmailPool.Send(pushed.Email, 10*time.Second)
+				err := EmailPool.Send(pushed.Email, 10*time.Second)
+				if err != nil {
+					if DevMode {
+						fmt.Println("trouble sending email to ", pushed.Email.To, " : ", err)
+					}
+				} else if DevMode {
+					fmt.Println("email sent to ", pushed.Email.To, " successfully!")
+				}
+				pushed.Error <- err
 			}
 		}()
 	}
@@ -79,6 +87,7 @@ func stopEmailer() {
 // SendEmail send an *Email (with the correct details of course)
 func SendEmail(mail *Email) error {
 	pe := &PushedEmail{Email: mail}
+	pe.Error = make(chan error)
 	PushEmail <- pe
 	return <-pe.Error
 }
