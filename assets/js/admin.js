@@ -1,5 +1,5 @@
 /* global localStorage fetch */
-localStorage.getItem('cookie-ok') && document.querySelector('.cookie-toast').remove()
+try { localStorage.getItem('cookie-ok') && document.querySelector('.cookie-toast').remove() }catch(e) {}
 
 const cacheScript = (
   url,
