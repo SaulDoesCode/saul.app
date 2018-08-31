@@ -106,7 +106,7 @@ func createUser(email, username string) (User, error) {
 
 	magicLink := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
 	if DevMode {
-		magicLink = "https://localhost:" + ":" + Config["devPort"].(string) + "/auth/" + user.Username + "/" + user.Verifier + "/web"
+		magicLink = "https://localhost:" + ":" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
 	}
 
 	err = SendEmail(&Email{
@@ -159,7 +159,7 @@ func authenticateUser(user *User) error {
 
 	magicLink := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
 	if DevMode {
-		magicLink = "https://localhost:" + ":" + Config["devPort"].(string) + "/auth/" + user.Username + "/" + user.Verifier + "/web"
+		magicLink = "https://localhost:" + ":" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
 	}
 
 	err = SendEmail(&Email{

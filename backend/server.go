@@ -1,9 +1,7 @@
 package backend
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -11,6 +9,7 @@ import (
 	"github.com/SaulDoesCode/branca"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"github.com/tidwall/gjson"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -21,7 +20,7 @@ var (
 	// AppName name of this application
 	AppName string
 	// Config file data as gjson result
-	Config obj
+	Config gjson.Result
 	// Server the echo instance running the show
 	Server *echo.Echo
 	// DevMode run the app in production or dev-mode
@@ -36,35 +35,31 @@ var (
 
 // Init start the backend server
 func Init(configfile string) {
-	raw, err := ioutil.ReadFile(configfile)
-	if err != nil {
-		panic(err)
-	}
-	if err := json.Unmarshal(raw, &Config); err != nil {
-		panic(err)
-	}
+	conf, err := ReadJSONFile(configfile)
+	critCheck(err)
+	Config = conf
 
 	DevMode = os.Getenv("SAULAPP_DEVMODE") == "true"
 
 	Server = echo.New()
 
-	Server.Use(middleware.Static(Config["assets"].(string)))
+	Server.Use(middleware.Static(Config.Get("assets").String()))
 	Server.Use(middleware.GzipWithConfig(middleware.GzipConfig{Level: 9}))
 	Server.Use(middleware.Recover())
 	Server.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 		Format: "${method}::${status} ${host}${uri}  \tlag=${latency_human}\n",
 	}))
 
-	AppName = Config["appname"].(string)
+	AppName = Config.Get("appname").String()
 
 	fmt.Println("Firing up: ", AppName+"...")
 	fmt.Println("DevMode: ", DevMode)
 
 	insecurePort := ":"
 	if DevMode {
-		insecurePort += Config["devInsecurePort"].(string)
+		insecurePort += Config.Get("devInsecurePort").String()
 	} else {
-		insecurePort += Config["insecurePort"].(string)
+		insecurePort += Config.Get("insecurePort").String()
 	}
 
 	go http.ListenAndServe(insecurePort, http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -79,31 +74,41 @@ func Init(configfile string) {
 		http.Redirect(res, req, target, http.StatusTemporaryRedirect)
 	}))
 
+	addrs := []string{}
+	for _, val := range Config.Get("db_address").Array() {
+		addrs = append(addrs, val.String())
+	}
+
 	DB.Open(&DialInfo{
-		Addrs:   []string{Config["db_address"].(string)},
-		AppName: Config["appname"].(string),
+		Addrs:   addrs,
+		AppName: AppName,
 		Timeout: 60 * time.Second,
-	}, Config["db_name"].(string))
+	}, Config.Get("db_name").String())
 	defer DB.Close()
 
-	EmailConf.Email = Config["admin_email.email"].(string)
-	EmailConf.Server = Config["admin_email.server"].(string)
-	EmailConf.Port = Config["admin_email.port"].(string)
-	EmailConf.Password = Config["admin_email.password"].(string)
-	EmailConf.FromTxt = Config["admin_email.fromtxt"].(string)
+	econf := Config.Get("admin-email")
+	EmailConf.Email = econf.Get("email").String()
+	EmailConf.Server = econf.Get("server").String()
+	EmailConf.Port = econf.Get("port").String()
+	EmailConf.Password = econf.Get("password").String()
+	EmailConf.FromTxt = econf.Get("fromtxt").String()
 	EmailConf.Address = EmailConf.Server + ":" + EmailConf.Port
 
 	startEmailer()
 	defer stopEmailer()
 
-	Branca = branca.NewBranca(Config["token_secret"].(string))
+	Branca = branca.NewBranca(Config.Get("token_secret").String())
 	Branca.SetTTL(900)
 
 	if DevMode {
-		Server.Logger.Fatal(Server.StartTLS(":"+Config["devPort"].(string), Config["https_cert"].(string), Config["https_key"].(string)))
+		Server.Logger.Fatal(Server.StartTLS(
+			":"+Config.Get("devPort").String(),
+			Config.Get("https_cert").String(),
+			Config.Get("https_key").String(),
+		))
 	} else {
-		Server.AutoTLSManager.HostPolicy = autocert.HostWhitelist(Config["domain"].(string))
-		Server.AutoTLSManager.Cache = autocert.DirCache(Config["privates"].(string))
-		Server.Logger.Fatal(Server.StartAutoTLS(":" + Config["port"].(string)))
+		Server.AutoTLSManager.HostPolicy = autocert.HostWhitelist(Config.Get("domain").String())
+		Server.AutoTLSManager.Cache = autocert.DirCache(Config.Get("privates").String())
+		Server.Logger.Fatal(Server.StartAutoTLS(":" + Config.Get("port").String()))
 	}
 }
