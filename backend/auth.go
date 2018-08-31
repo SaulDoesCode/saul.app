@@ -113,12 +113,12 @@ func createUser(email, username string) (User, error) {
 		To:      []string{user.Email},
 		Subject: UnverifiedSubject,
 		Text: []byte(`
-			Hi, ` + user.Username + `!
+Hi, ` + user.Username + `!
 
-			To login at ` + AppName + `, just follow this magic link:
-			` + magicLink + `
-			Note, this link will expire in about 15 minutes.
-			If it doesn't work try logging in again from https://saul.app.
+To login at ` + AppName + `, just follow this magic link:
+` + magicLink + `
+Note, this link will expire in about 15 minutes.
+If it doesn't work try logging in again from https://saul.app.
 		`),
 		HTML: []byte(`
 <!DOCTYPE html>
@@ -149,7 +149,56 @@ func createUser(email, username string) (User, error) {
 }
 
 func authenticateUser(user *User) error {
-	return ErrUnauthorized
+	user.Verifier = RandStr(VerifierSize)
+	err := user.Update(obj{
+		"$set": obj{"verifier": user.Verifier},
+	})
+	if err != nil {
+		return err
+	}
+
+	magicLink := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
+	if DevMode {
+		magicLink = "https://localhost:" + ":" + Config["devPort"].(string) + "/auth/" + user.Username + "/" + user.Verifier + "/web"
+	}
+
+	err = SendEmail(&Email{
+		To:      []string{user.Email},
+		Subject: UnverifiedSubject,
+		Text: []byte(`
+Hi, ` + user.Username + `!
+
+To login at ` + AppName + `, just follow this magic link:
+` + magicLink + `
+Note, this link will expire in about 15 minutes.
+If it doesn't work try logging in again from https://saul.app.
+		`),
+		HTML: []byte(`
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1.0">
+	<title>Verification Email</title>
+</head>
+<body style="font-family: Nunito, Verdunda, Helvetica, Roboto, sans-serif; text-align: center; color: hsl(0,0%,30%); background: hsl(0,0%,99%);">
+	<main style="display: block; position: relative; margin: 15px auto; padding: 5px 15px 15px 15px; max-width: 420px; background: #FFF; box-shadow: 0 2px 8px hsla(0,0%,0%,.12); border-radius: 2.5px;">
+		<h3>Hi there ` + user.Username + `!</h3>
+		Please follow the verification link to login to ` + AppName + `.
+		<br>
+		<a href="` + magicLink + `" style="display: block; font-size: 1.2em; font-weight: 600; margin: 10px auto; max-width: 180px; padding: 8px; border-radius: 2.5px; text-decoration: none; color: #fff; background: hsl(0,0%,30%); box-shadow: 0 2px 6px hsla(0,0%,0%,.12); text-shadow: 0 1px 3px hsla(0,0%,0%,.12);">
+			Login
+		</a>
+		<br>
+		<footer>
+			Note, this link will expire in about 15 minutes, just log in again from <a href="https://saul.app" style="color: inherit;">saul.app</a> if it doesn't work.
+		</footer>
+	</main>
+</body>
+</html>`),
+	})
+
+	return err
 }
 
 func verifyUser(user *User, verifier string) error {
