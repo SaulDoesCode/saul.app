@@ -100,6 +100,8 @@ func Init(configfile string) {
 	Branca = branca.NewBranca(Config.Get("token_secret").String())
 	Branca.SetTTL(900)
 
+	initAuth()
+
 	if DevMode {
 		Server.Logger.Fatal(Server.StartTLS(
 			":"+Config.Get("devPort").String(),
