@@ -318,6 +318,9 @@ func initAuth() {
 
 		err = verifyUser(&user, verifier)
 		if err != nil {
+			if DevMode {
+				fmt.Println("verifyUser: ", err)
+			}
 			return UnauthorizedError(c)
 		}
 
