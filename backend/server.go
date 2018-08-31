@@ -45,7 +45,6 @@ func Init(configfile string) {
 
 	Server = echo.New()
 
-	Server.Use(middleware.GzipWithConfig(middleware.GzipConfig{Level: 9}))
 	Server.Use(middleware.Recover())
 	Server.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 		Format: "${method}::${status} ${host}${uri}  \tlag=${latency_human}\n",
