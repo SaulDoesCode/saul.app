@@ -80,7 +80,7 @@ func Init(configfile string) {
 	}))
 
 	DB.Open(&DialInfo{
-		Addrs:   Config["db_address"].([]string),
+		Addrs:   []string{Config["db_address"].(string)},
 		AppName: Config["appname"].(string),
 		Timeout: 60 * time.Second,
 	}, Config["db_name"].(string))
