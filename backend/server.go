@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/SaulDoesCode/branca"
+	"github.com/SaulDoesCode/echo-memfile"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/tidwall/gjson"
@@ -17,6 +18,7 @@ type obj = map[string]interface{}
 type ctx = echo.Context
 
 var (
+	MFI *memfile.MemFileInstance
 	// AppName name of this application
 	AppName string
 	// Config file data as gjson result
@@ -43,12 +45,20 @@ func Init(configfile string) {
 
 	Server = echo.New()
 
-	Server.Use(middleware.Static(Config.Get("assets").String()))
+	Server.Use(middleware.Static())
 	Server.Use(middleware.GzipWithConfig(middleware.GzipConfig{Level: 9}))
 	Server.Use(middleware.Recover())
 	Server.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 		Format: "${method}::${status} ${host}${uri}  \tlag=${latency_human}\n",
 	}))
+
+	MFI := memfile.New(Server, Config.Get("assets").String(), DevMode)
+
+	if DevMode {
+		MFI.UpdateOnInterval(time.Millisecond * 400)
+	} else {
+		MFI.UpdateOnInterval(time.Second * 5)
+	}
 
 	AppName = Config.Get("appname").String()
 
@@ -108,10 +118,6 @@ func Init(configfile string) {
 			Config.Get("https_cert").String(),
 			Config.Get("https_key").String(),
 		))
-
-		Server.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-			Format: "${method}::${status} ${host}${uri}  \tlag=${latency_human}\n",
-		}))
 	} else {
 		Server.AutoTLSManager.HostPolicy = autocert.HostWhitelist(Config.Get("domain").String())
 		Server.AutoTLSManager.Cache = autocert.DirCache(Config.Get("privates").String())

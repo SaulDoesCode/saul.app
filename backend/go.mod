@@ -3,6 +3,7 @@ module github.com/sauldoescode/saul.app/backend
 require (
 	github.com/Machiel/slugify v1.0.1
 	github.com/SaulDoesCode/branca v0.0.0-20180829095255-68cd954d3d10
+	github.com/SaulDoesCode/echo-memfile v0.0.0-20180106234409-ef1bb8d1194f
 	github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/eknkc/basex v0.0.0-20170912144314-a98a99981862 // indirect
