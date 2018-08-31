@@ -353,4 +353,6 @@ func initAuth() {
 		}
 		return c.JSON(203, obj{"token": token, "username": username})
 	})
+
+	fmt.Println("Auth Handling Started")
 }
