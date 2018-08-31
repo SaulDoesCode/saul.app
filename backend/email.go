@@ -2,6 +2,7 @@ package backend
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/smtp"
 	"net/textproto"
@@ -26,6 +27,8 @@ var (
 		Email       string
 		Password    string
 	}{}
+	// ErrInvalidEmail bad email
+	ErrInvalidEmail = errors.New(`Invalid Email Address`)
 )
 
 // startEmailer - initialize the blog's email configuration
@@ -100,7 +103,7 @@ func stopEmailer() {
 
 // SendEmail send an *Email (with the correct details of course)
 func SendEmail(mail *Email) error {
-	if mail.From == "" {
+	if len(mail.From) == 0 {
 		mail.From = EmailConf.FromTxt
 	}
 
@@ -108,5 +111,8 @@ func SendEmail(mail *Email) error {
 		mail.Headers = textproto.MIMEHeader{}
 	}
 
+	if !validEmail(mail.To[0]) {
+		return ErrInvalidEmail
+	}
 	return mail.SendWithTLS(EmailConf.Address, SMTPAuth, EmailTLSConfig)
 }
