@@ -109,11 +109,10 @@ func createUser(email, username string) (User, error) {
 
 	magicLink := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
 	if DevMode {
-		magicLink = "https://localhost:" + ":" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
+		magicLink = "https://localhost:" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
 	}
 
 	err = SendEmail(&Email{
-		From:    EmailConf.FromTxt,
 		To:      []string{user.Email},
 		Subject: UnverifiedSubject,
 		Text: []byte(`
@@ -169,11 +168,10 @@ func authenticateUser(user *User) error {
 
 	magicLink := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
 	if DevMode {
-		magicLink = "https://localhost:" + ":" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
+		magicLink = "https://localhost:" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
 	}
 
 	err = SendEmail(&Email{
-		From:    EmailConf.FromTxt,
 		To:      []string{user.Email},
 		Subject: UnverifiedSubject,
 		Text: []byte(`
@@ -218,12 +216,20 @@ func verifyUser(user *User, verifier string) error {
 	}
 	err := user.Update(obj{
 		"$unset": obj{"verifier": verifier},
-		"$pull":  obj{"roles": UnverifiedUser},
 		"$addToSet": obj{
 			"roles":  VerifiedUser,
 			"logins": time.Now(),
 		},
 	})
+
+	for _, val := range user.Roles {
+		if val == UnverifiedUser {
+			err = user.Update(obj{
+				"$pull": obj{"roles": UnverifiedUser},
+			})
+		}
+	}
+
 	return err
 }
 
