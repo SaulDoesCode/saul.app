@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/smtp"
+	"net/textproto"
 
 	"github.com/jordan-wright/email"
 )
@@ -99,5 +100,13 @@ func stopEmailer() {
 
 // SendEmail send an *Email (with the correct details of course)
 func SendEmail(mail *Email) error {
+	if mail.From == "" {
+		mail.From = EmailConf.FromTxt
+	}
+
+	if &mail.Headers == nil {
+		mail.Headers = textproto.MIMEHeader{}
+	}
+
 	return mail.SendWithTLS(EmailConf.Address, SMTPAuth, EmailTLSConfig)
 }
