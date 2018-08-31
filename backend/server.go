@@ -6,21 +6,32 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/SaulDoesCode/branca"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"golang.org/x/crypto/acme/autocert"
 )
 
 type obj = map[string]interface{}
+type ctx = echo.Context
 
 var (
-	// Server the echo instance running the show
-	Server *echo.Echo
+	// AppName name of this application
+	AppName string
 	// Config file data as gjson result
 	Config obj
+	// Server the echo instance running the show
+	Server *echo.Echo
 	// DevMode run the app in production or dev-mode
 	DevMode = false
+	// DB mongodb wrapper struct
+	DB = &Database{}
+	// Branca token generator/decoder
+	Branca *branca.Branca
+	// VerifierSize size of pre-token verification code
+	VerifierSize = 14
 )
 
 // Init start the backend server
@@ -35,11 +46,6 @@ func Init(configfile string) {
 
 	DevMode = os.Getenv("SAULAPP_DEVMODE") == "true"
 
-	if !DevMode {
-		fmt.Println("What?", DevMode)
-		return
-	}
-
 	Server = echo.New()
 
 	Server.Use(middleware.Static(Config["assets"].(string)))
@@ -49,7 +55,9 @@ func Init(configfile string) {
 		Format: "${method}::${status} ${host}${uri}  \tlag=${latency_human}\n",
 	}))
 
-	fmt.Println("Firing up: ", Config["appname"], "...")
+	AppName = Config["appname"].(string)
+
+	fmt.Println("Firing up: ", AppName+"...")
 	fmt.Println("DevMode: ", DevMode)
 
 	insecurePort := ":"
@@ -71,8 +79,28 @@ func Init(configfile string) {
 		http.Redirect(res, req, target, http.StatusTemporaryRedirect)
 	}))
 
+	DB.Open(&DialInfo{
+		Addrs:   Config["db_address"].([]string),
+		AppName: Config["appname"].(string),
+		Timeout: 60 * time.Second,
+	}, Config["db_name"].(string))
+	defer DB.Close()
+
+	EmailConf.Email = Config["admin_email.email"].(string)
+	EmailConf.Server = Config["admin_email.server"].(string)
+	EmailConf.Port = Config["admin_email.port"].(string)
+	EmailConf.Password = Config["admin_email.password"].(string)
+	EmailConf.FromTxt = Config["admin_email.fromtxt"].(string)
+	EmailConf.Address = EmailConf.Server + ":" + EmailConf.Port
+
+	startEmailer()
+	defer stopEmailer()
+
+	Branca = branca.NewBranca(Config["token_secret"].(string))
+	Branca.SetTTL(900)
+
 	if DevMode {
-		Server.Logger.Fatal(Server.StartTLS(":"+Config["port"].(string), Config["https_cert"].(string), Config["https_key"].(string)))
+		Server.Logger.Fatal(Server.StartTLS(":"+Config["devPort"].(string), Config["https_cert"].(string), Config["https_key"].(string)))
 	} else {
 		Server.AutoTLSManager.HostPolicy = autocert.HostWhitelist(Config["domain"].(string))
 		Server.AutoTLSManager.Cache = autocert.DirCache(Config["privates"].(string))
