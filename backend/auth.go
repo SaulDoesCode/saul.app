@@ -173,7 +173,7 @@ func authenticateUser(user *User) error {
 
 	err = SendEmail(&Email{
 		To:      []string{user.Email},
-		Subject: UnverifiedSubject,
+		Subject: VerifiedSubject,
 		Text: []byte(`
 Hi, ` + user.Username + `!
 
