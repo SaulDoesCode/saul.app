@@ -59,3 +59,49 @@ body {
   font-family: Nunito, Verdunda, Helvetica, Arial, sans-serif;
   background: var(--the-mood);
 }
+
+section.auth {
+  display: flex;
+  justify-content: space-around;
+  align-content: center;
+  align-items: center;
+  flex-flow: column wrap;
+  margin: 1em auto;
+  padding: .75em;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, .18);
+}
+
+section.auth > div {
+  display: flex;
+  justify-content: space-around;
+  align-content: center;
+  align-items: flex-start;
+  flex-flow: column wrap;
+  margin: .5em auto;
+  width: 100%;
+}
+
+section.auth input {
+  display: block;
+  border: 0;
+  outline: 0;
+  margin: .5em auto;
+  box-shadow: 0 4px 4px -4px rgba(0, 0, 0, .14);
+  border-bottom: 1px solid var(--the-mood);
+  width: 100%;
+}
+
+section.auth>button {
+  border: 0;
+  padding: 5px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 1.2em;
+  width: 100%;
+  background: var(--the-mood);
+  text-align: 0 1px 3px rgba(0, 0, 0, .16);
+  cursor: pointer;
+  margin: .5em auto 0 auto;
+}
