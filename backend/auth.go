@@ -85,7 +85,7 @@ func IsUsernameAvailable(username string) bool {
 func createUser(email, username string) (User, error) {
 	var user User
 
-	if !validUsernameAndEmail(username, email) {
+	if IsUsernameAvailable(username) && !validEmail(email) {
 		return user, ErrInvalidUsernameOrEmail
 	}
 
@@ -300,15 +300,16 @@ func initAuth() {
 
 		user, err := UserByEmail(email)
 		if err == nil {
+			if user.Username != username {
+				return InvalidDetailsError(c)
+			}
 			err = authenticateUser(&user)
 		} else {
 			user, err = createUser(email, username)
 		}
 
 		if err == nil {
-			return c.JSON(203, obj{
-				"msg": "Thank You " + user.Username + ", we sent you an authentication email.",
-			})
+			return c.JSONBlob(203, []byte(`{"msg": "Thanks `+user.Username+`", we sent you an authentication email."}`))
 		} else if DevMode {
 			fmt.Println("Authentication Problem: \n\tusername - ", username, "\n\temail - ", email, "\n\terror - ", err)
 		}
