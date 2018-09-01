@@ -13,20 +13,22 @@ const checkUsername = async username => {
 const authenticate = async (email, username) => {
   if (!(await checkUsername(username)).ok) console.log('returing user')
   console.log(`Awaiting Authentication for ${username}`)
+  console.time()
   const res = await fetch('/auth', {
     method: 'POST',
     body: JSON.stringify({email, username})
   })
   const data = await res.json()
   console.log(`The verdict is: `, data)
+  console.timeEnd()
 }
 
 
 const authform = section.auth({
   $: 'body',
   state: {
-    email: 'saulvdw@gmail.com',
-    username: 'SaulDoesCode'
+    email: localStorage.getItem('$email') || '',
+    username: localStorage.getItem('$username') || ''
   }
 }, ({state}) => [
   div.email(
@@ -50,6 +52,5 @@ const authform = section.auth({
   ),
   button.submit({
     onclick (e) { authenticate(state.email, state.username) }
-  }, 'Go!'),
-  div(`Your username is`, state.$username, `and your email is `, state.$email, '.')
+  }, 'Go!')
 ])

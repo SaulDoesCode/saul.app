@@ -17,7 +17,7 @@ cacheScript(isDevBox
   src => {
     const script = document.createElement('script')
     script.textContent = src + ';\n'
-    cacheScript((isDevBox ? '' : '/assets') + '/js/next-view.js', src => {
+    cacheScript('/js/next-view.js', src => {
       script.textContent += `\n;rilti.run(() => {\n${src}\n});\n`
       document.head.appendChild(script)
       localStorage.setItem('fresh', false)
