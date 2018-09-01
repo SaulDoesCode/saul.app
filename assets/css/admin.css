@@ -4,8 +4,7 @@
   --the-mood: hsl(39, 100%, 72%);
 }
 
-*,
-* * {
+*, * * {
   box-sizing: border-box;
   position: relative;
 }
