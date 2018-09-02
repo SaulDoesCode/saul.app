@@ -309,7 +309,7 @@ func initAuth() {
 		}
 
 		if err == nil {
-			return c.JSONBlob(203, []byte(`{"msg": "Thanks `+user.Username+`", we sent you an authentication email."}`))
+			return c.JSONBlob(203, []byte(`{"msg": "Thanks `+user.Username+`, we sent you an authentication email."}`))
 		} else if DevMode {
 			fmt.Println("Authentication Problem: \n\tusername - ", username, "\n\temail - ", email, "\n\terror - ", err)
 		}
