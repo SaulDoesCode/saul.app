@@ -1,6 +1,25 @@
 const {dom, each, $} = rilti
 const {html, article, div, nav, header, section, span, a} = dom
 
+const converter = new showdown.Converter()
+
+const persp = section.perspective({$: 'body'})
+
+fetch('https://rawgit.com/SaulDoesCode/perspective/master/README.md')
+  .then(res => res.text())
+  .then(perspective => {
+    persp.innerHTML = converter.makeHtml(perspective)
+    setTimeout(() => {
+      try {
+        $('a[href="./Lexicon.md"]').attr({
+          href: 'https://rawgit.com/SaulDoesCode/perspective/master/Lexicon.md',
+          target: '_blank',
+          rel: 'noopener'
+        })
+      } catch (e) {}
+    }, 250)
+  })
+
 const Ideas = {
   'nominalism': `(name + ism -> nominalism) - Awareness of universals' non existence. We see concepts and labels not objects as such, even though every object is discrete and particular; even species or class instances.
     Because no two objects exist in the same manner, time or place. Relationships, between objects or phenomena are, therefore, a mental abstraction helping us construct
@@ -30,7 +49,7 @@ section.ideas({$: 'body'}, ({state}) => {
   const title = header(span('ideas '), state`: ${'active'}`)
   const display = article()
   const list = div.ideas({
-    onclick: ({target}) => { 
+    onclick: ({target}) => {
       if (target.matches('span.idea')) state.active = target.textContent
     }
   })
@@ -44,7 +63,7 @@ section.ideas({$: 'body'}, ({state}) => {
     display.html = idea
     if (state.activeIdea) state.activeIdea.class('active', false)
     state.activeIdea = state.ideas[name].class('active', true)
-  })    
+  })
 
   state.ideas = {}
   for (const name of Object.keys(Ideas)) {

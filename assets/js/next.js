@@ -17,10 +17,13 @@ cacheScript(isDevBox
   src => {
     const script = document.createElement('script')
     script.textContent = src + ';\n'
-    cacheScript('/js/next-view.js', src => {
-      script.textContent += `\n;rilti.run(() => {\n${src}\n});\n`
-      document.head.appendChild(script)
-      localStorage.setItem('fresh', false)
-    })
+    cacheScript("/js/showdown.min.js", src => {
+      script.textContent += src + ';\n'
+      cacheScript('/js/next-view.js', src => {
+        script.textContent += `\n;rilti.run(() => {\n${src}\n});\n`
+        document.head.appendChild(script)
+        localStorage.setItem('fresh', false)
+      }, false)
+    }, true)
   }
 )
