@@ -1,52 +1,78 @@
 package backend
 
 import (
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"context"
+	"log"
+
+	"github.com/arangodb/go-driver"
+	"github.com/arangodb/go-driver/http"
 )
 
-// ObjID bson.ObjectId type alias for ease of use
-type ObjID = bson.ObjectId
+var (
+	// DB central arangodb database for querying
+	DB driver.Database
+	// Users arangodb collection containing user data
+	Users driver.Collection
+)
 
-// Collection mgo.Collection alias
-type Collection = mgo.Collection
-
-// DialInfo mgo.DialInfo alias
-type DialInfo = mgo.DialInfo
-
-// Database mongodb convenience wrapper
-type Database struct {
-	Session *mgo.Session
-	DB      *mgo.Database
-	Users   *Collection
-	Writs   *Collection
-}
-
-// Open start a mgo session and get a DB
-func (db *Database) Open(dailinfo *DialInfo, dbName string) {
-	session, err := mgo.DialWithInfo(dailinfo)
+func setupDB(endpoints []string, dbname, username, password string) {
+	// Create an HTTP connection to the database
+	conn, err := http.NewConnection(http.ConnectionConfig{
+		Endpoints: endpoints,
+	})
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to create HTTP connection: %v", err)
 	}
-	// session.SetMode(mgo.Monotonic, true)
-	session.SetSafe(&mgo.Safe{})
-	db.Session = session
-	db.DB = db.Session.DB(dbName)
-	db.Users = db.Coll("users")
-	db.Writs = db.Coll("writs")
+
+	client, err := driver.NewClient(driver.ClientConfig{
+		Connection:     conn,
+		Authentication: driver.BasicAuthentication(username, password),
+	})
+	if err != nil {
+		log.Fatalf("Could not get proper arangodb client: %v", err)
+	}
+
+	ctx := context.Background()
+
+	db, err := client.Database(ctx, dbname)
+	if err != nil {
+		log.Fatalf("Could not get database object: %v", err)
+	}
+	DB = db
+	users, err := DB.Collection(ctx, "users")
+	Users = users
+	if err != nil {
+		log.Fatalf("Could not get users collection from db: %v", err)
+	}
 }
 
-// Close the mgo.Session
-func (db *Database) Close() {
-	db.Session.Close()
+// Query query the app's DB with AQL, bindvars, and map that to an output
+func Query(query string, vars obj) ([]obj, error) {
+	var objects []obj
+	ctx := driver.WithQueryCount(context.Background())
+	cursor, err := DB.Query(ctx, query, vars)
+	if err == nil {
+		defer cursor.Close()
+		objects = []obj{}
+		for {
+			var doc obj
+			_, err := cursor.ReadDocument(ctx, &doc)
+			if driver.IsNoMoreDocuments(err) || err != nil {
+				break
+			}
+			objects = append(objects, doc)
+		}
+	}
+	return objects, err
 }
 
-// Coll get a mgo.Collection
-func (db *Database) Coll(collName string) *Collection {
-	return db.DB.C(collName)
-}
-
-// MakeID generate a new bson.ObjectId
-func MakeID() ObjID {
-	return bson.NewObjectId()
+// QueryOne query the app's DB with AQL, bindvars, and map that to an output
+func QueryOne(query string, vars obj, result interface{}) error {
+	ctx := driver.WithQueryCount(context.Background())
+	cursor, err := DB.Query(ctx, query, vars)
+	defer cursor.Close()
+	if err == nil {
+		_, err = cursor.ReadDocument(ctx, &result)
+	}
+	return err
 }
