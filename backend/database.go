@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/arangodb/go-driver"
@@ -29,20 +30,23 @@ func setupDB(endpoints []string, dbname, username, password string) {
 		Authentication: driver.BasicAuthentication(username, password),
 	})
 	if err != nil {
-		log.Fatalf("Could not get proper arangodb client: %v", err)
+		fmt.Println("Could not get proper arangodb client:")
+		panic(err)
 	}
 
 	ctx := context.Background()
 
 	db, err := client.Database(ctx, dbname)
 	if err != nil {
-		log.Fatalf("Could not get database object: %v", err)
+		fmt.Println("Could not get database object:")
+		panic(err)
 	}
 	DB = db
 	users, err := DB.Collection(ctx, "users")
 	Users = users
 	if err != nil {
-		log.Fatalf("Could not get users collection from db: %v", err)
+		fmt.Println("Could not get users collection from db:")
+		panic(err)
 	}
 }
 
