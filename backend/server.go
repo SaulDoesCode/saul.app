@@ -85,13 +85,8 @@ func Init(configfile string) {
 		http.Redirect(res, req, target, http.StatusTemporaryRedirect)
 	}))
 
-	addrs := []string{}
-	for _, val := range Config.Get("db_address").Array() {
-		addrs = append(addrs, val.String())
-	}
-
 	setupDB(
-		addrs,
+		[]string{"http://localhost:8529"},
 		Config.Get("db_name").String(),
 		Config.Get("db_username").String(),
 		Config.Get("db_password").String(),
