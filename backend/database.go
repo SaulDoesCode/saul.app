@@ -17,6 +17,10 @@ var (
 )
 
 func setupDB(endpoints []string, dbname, username, password string) {
+	fmt.Println(`Attempting ArangoDB connection...
+		DB: ` + dbname + `
+	`)
+
 	// Create an HTTP connection to the database
 	conn, err := http.NewConnection(http.ConnectionConfig{
 		Endpoints: endpoints,
@@ -29,7 +33,6 @@ func setupDB(endpoints []string, dbname, username, password string) {
 		Connection:     conn,
 		Authentication: driver.JWTAuthentication(username, password),
 	})
-
 	if err != nil {
 		fmt.Println("Could not get proper arangodb client:")
 		panic(err)
@@ -48,6 +51,8 @@ func setupDB(endpoints []string, dbname, username, password string) {
 		fmt.Println("Could not get users collection from db:")
 		panic(err)
 	}
+
+	fmt.Println(`ArangoDB Connected. So far so good.`)
 }
 
 // Query query the app's DB with AQL, bindvars, and map that to an output
@@ -76,7 +81,7 @@ func QueryOne(query string, vars obj, result interface{}) error {
 	cursor, err := DB.Query(ctx, query, vars)
 	defer cursor.Close()
 	if err == nil {
-		_, err = cursor.ReadDocument(ctx, &result)
+		_, err = cursor.ReadDocument(ctx, result)
 	}
 	return err
 }
