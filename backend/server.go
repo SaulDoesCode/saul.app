@@ -11,7 +11,6 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/tidwall/gjson"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 type obj = map[string]interface{}
@@ -54,7 +53,7 @@ func Init(configfile string) {
 	}))
 
 	MFI := memfile.New(Server, Config.Get("assets").String(), DevMode)
-
+	
 	if DevMode {
 		MFI.UpdateOnInterval(time.Millisecond * 400)
 	} else {
@@ -72,18 +71,6 @@ func Init(configfile string) {
 	} else {
 		insecurePort += Config.Get("insecurePort").String()
 	}
-
-	go http.ListenAndServe(insecurePort, http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		target := "https://" + req.Host + req.URL.Path
-		if len(req.URL.RawQuery) > 0 {
-			target += "?" + req.URL.RawQuery
-		}
-		if DevMode {
-			fmt.Printf("\nredirect to: %s \n", target)
-			fmt.Println(req.RemoteAddr)
-		}
-		http.Redirect(res, req, target, http.StatusTemporaryRedirect)
-	}))
 
 	addrs := []string{}
 	for _, val := range Config.Get("db_address").Array() {
@@ -116,6 +103,18 @@ func Init(configfile string) {
 
 	initAuth()
 
+	go http.ListenAndServe(insecurePort, http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		target := "https://" + req.Host + req.URL.Path
+		if len(req.URL.RawQuery) > 0 {
+			target += "?" + req.URL.RawQuery
+		}
+		if DevMode {
+			fmt.Printf("\nredirect to: %s \n", target)
+			fmt.Println(req.RemoteAddr)
+		}
+		http.Redirect(res, req, target, http.StatusTemporaryRedirect)
+	}))
+
 	if DevMode {
 		Server.Logger.Fatal(Server.StartTLS(
 			":"+Config.Get("devPort").String(),
@@ -123,13 +122,10 @@ func Init(configfile string) {
 			Config.Get("https_key").String(),
 		))
 	} else {
-		Server.AutoTLSManager.HostPolicy = autocert.HostWhitelist(Config.Get("domain").String())
-		Server.AutoTLSManager.Cache = autocert.DirCache(Config.Get("privates").String())
-		Server.Logger.Fatal(Server.StartAutoTLS(":" + Config.Get("port").String()))
-		/*Server.Logger.Fatal(Server.StartTLS(
+		Server.Logger.Fatal(Server.StartTLS(
 			":"+Config.Get("port").String(),
 			"/etc/letsencrypt/live/"+Config.Get("domain").String()+"/cert.pem",
 			"/etc/letsencrypt/live/"+Config.Get("domain").String()+"/privkey.pem",
-		))*/
+		))
 	}
 }
