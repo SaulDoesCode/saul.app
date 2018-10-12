@@ -6,22 +6,21 @@ import (
 	"github.com/Machiel/slugify"
 )
 
-
 // Writ - struct representing a post or document in the database
 type Writ struct {
-	ID          ObjID       `bson:"_id"`
-	Title       string      `bson:"title"`
-	Author      string      `bson:"author"`
-	Content     string      `bson:"content"`
-	Markdown    string      `bson:"markdown"`
-	Description string      `bson:"description"`
-	Slug        string      `bson:"slug"`
-	Tags        []string    `bson:"tags"`
-	Edits       []time.Time `bson:"edits"`
-	Created     time.Time   `bson:"created"`
-	Views       int64       `bson:"views"`
-	Likes       int64       `bson:"likes"`
-	Published   bool        `bson:"published"`
+	Key         string      `json:"_key"`
+	Title       string      `json:"title"`
+	Author      string      `json:"author"`
+	Content     string      `json:"content"`
+	Markdown    string      `json:"markdown"`
+	Description string      `json:"description"`
+	Slug        string      `json:"slug"`
+	Tags        []string    `json:"tags"`
+	Edits       []time.Time `json:"edits"`
+	Created     time.Time   `json:"created"`
+	Views       int64       `json:"views"`
+	Likes       int64       `json:"likes"`
+	Published   bool        `json:"published"`
 }
 
 // Slugify generate and set .Slug from .Title
