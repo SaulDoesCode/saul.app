@@ -1,1 +1,1 @@
-module github.com/sauldoescode/saul.app
+module github.com/sauldoescode/saul.app/backend
