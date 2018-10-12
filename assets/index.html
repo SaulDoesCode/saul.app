@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="/css/prism-default.css">
   <link rel="stylesheet" href="/css/next.css">
   <link rel="stylesheet" href="/media/icons/fontello/css/fontello.css">
+  <script src="/js/showdown.min.js"></script>
+  <script src="https://rawgit.com/SaulDoesCode/rilti.js/experimental/dist/rilti.min.js"></script>
+  <script src="/js/next-view.js" async defer></script>
 </head>
 
 <body>
@@ -47,7 +50,13 @@
     It's just so I can see how my little site is doing and make it faster.
     <div onclick="this.parentNode.remove(); localStorage.setItem('cookie-ok', true)"></div>
   </section>
-  <script src="/js/next.js"></script>
+  <main></main>
+  <script>
+    try {
+      localStorage.getItem('cookie-ok') && document.querySelector('.cookie-toast').remove()
+    } catch (e) {}
+  </script>
+  <script src="/js/prism.js" async></script>
 </body>
 
 </html>

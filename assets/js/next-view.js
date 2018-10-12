@@ -1,25 +1,32 @@
+/* global localStorage fetch */
 const {dom, each, $} = rilti
 const {html, article, div, nav, header, section, span, a} = dom
 
-const converter = new showdown.Converter()
+const converter = new showdown.Converter({openLinksInNewWindow: true, tasklists: true})
 
-const persp = section.perspective({$: 'body'})
+const persp = section.perspective({$: 'main'})
+const lexi = section.lexicon({$: 'main'})
 
 fetch('https://rawgit.com/SaulDoesCode/perspective/master/README.md')
-  .then(res => res.text())
-  .then(perspective => {
-    persp.innerHTML = converter.makeHtml(perspective)
+  .then(res => res.text()).then(perspective => {
+    persp.html = converter.makeHtml(perspective)
     setTimeout(() => {
       try {
-        $('a[href="./Lexicon.md"]').attr({
-          href: 'https://rawgit.com/SaulDoesCode/perspective/master/Lexicon.md',
-          target: '_blank',
-          rel: 'noopener'
+        $('a[href="./Lexicon.md"]', persp).attr({
+          href: '#lexicondefinitionsforallthenonsense',
+          target: null,
+          rel: null
         })
       } catch (e) {}
     }, 250)
   })
 
+fetch('https://rawgit.com/SaulDoesCode/perspective/master/Lexicon.md')
+  .then(res => res.text()).then(lexicon => {
+    lexi.html = converter.makeHtml(lexicon)
+  })
+
+/*
 const Ideas = {
   'nominalism': `(name + ism -> nominalism) - Awareness of universals' non existence. We see concepts and labels not objects as such, even though every object is discrete and particular; even species or class instances.
     Because no two objects exist in the same manner, time or place. Relationships, between objects or phenomena are, therefore, a mental abstraction helping us construct
@@ -45,11 +52,11 @@ const Ideas = {
     exert a transaction or manner of operation within a larger context.`
 }
 
-section.ideas({$: 'body'}, ({state}) => {
+section.ideas({$: 'main'}, ({state}) => {
   const title = header(span('ideas '), state`: ${'active'}`)
   const display = article()
   const list = div.ideas({
-    onclick: ({target}) => {
+    onclick ({target}) {
       if (target.matches('span.idea')) state.active = target.textContent
     }
   })
@@ -73,3 +80,4 @@ section.ideas({$: 'body'}, ({state}) => {
 
   return [title, list, display]
 })
+*/
