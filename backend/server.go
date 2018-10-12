@@ -4,21 +4,26 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"text/template"
 	"time"
 
-	"github.com/SaulDoesCode/branca"
 	"github.com/SaulDoesCode/echo-memfile"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/tidwall/gjson"
-//	"golang.org/x/crypto/acme/autocert"
+	//	"golang.org/x/crypto/acme/autocert"
 )
 
 type obj = map[string]interface{}
 type ctx = echo.Context
 
 var (
+	// MFI instance of memfile static file memory caching
 	MFI *memfile.MemFileInstance
+	// AuthEmailHTML html template for authentication emails
+	AuthEmailHTML *template.Template
+	// AuthEmailTXT html template for authentication emails
+	AuthEmailTXT *template.Template
 	// AppName name of this application
 	AppName string
 	// Config file data as gjson result
@@ -27,10 +32,8 @@ var (
 	Server *echo.Echo
 	// DevMode run the app in production or dev-mode
 	DevMode = false
-	// DB mongodb wrapper struct
-	DB = &Database{}
-	// Branca token generator/decoder
-	Branca *branca.Branca
+	// Tokenator token generator/decoder
+	Tokenator *Branca
 	// VerifierSize size of pre-token verification code
 	VerifierSize = 14
 )
@@ -87,12 +90,15 @@ func Init(configfile string) {
 		addrs = append(addrs, val.String())
 	}
 
-	DB.Open(&DialInfo{
-		Addrs:   addrs,
-		AppName: AppName,
-		Timeout: 60 * time.Second,
-	}, Config.Get("db_name").String())
-	defer DB.Close()
+	setupDB(
+		addrs,
+		Config.Get("db_name").String(),
+		Config.Get("db_username").String(),
+		Config.Get("db_password").String(),
+	)
+
+	AuthEmailHTML = template.Must(template.ParseFiles("./templates/authemail.html"))
+	AuthEmailTXT = template.Must(template.ParseFiles("./templates/authemail.txt"))
 
 	EmailConf.Email = Config.Get("admin_email.email").String()
 	EmailConf.Server = Config.Get("admin_email.server").String()
@@ -105,8 +111,8 @@ func Init(configfile string) {
 	startEmailer()
 	defer stopEmailer()
 
-	Branca = branca.NewBranca(Config.Get("token_secret").String())
-	Branca.SetTTL(900)
+	Tokenator = NewBranca(Config.Get("token_secret").String())
+	Tokenator.SetTTL(900)
 
 	initAuth()
 
@@ -121,9 +127,9 @@ func Init(configfile string) {
 		//Server.AutoTLSManager.Cache = autocert.DirCache(Config.Get("privates").String())
 		//Server.Logger.Fatal(Server.StartAutoTLS(":" + Config.Get("port").String())
 		Server.Logger.Fatal(Server.StartTLS(
-			":" + Config.Get("port").String(),
-			"/etc/letsencrypt/live/" + Config.Get("domain").String() + "/cert.pem",
-			"/etc/letsencrypt/live/" + Config.Get("domain").String() + "/privkey.pem",
+			":"+Config.Get("port").String(),
+			"/etc/letsencrypt/live/"+Config.Get("domain").String()+"/cert.pem",
+			"/etc/letsencrypt/live/"+Config.Get("domain").String()+"/privkey.pem",
 		))
 	}
 }
