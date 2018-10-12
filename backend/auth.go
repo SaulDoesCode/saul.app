@@ -1,9 +1,12 @@
 package backend
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/arangodb/go-driver"
 )
 
 var (
@@ -11,6 +14,8 @@ var (
 	ErrInvalidUsernameOrEmail = errors.New("bad username and/or email")
 	// ErrUnauthorized what ever happened it was not authorized
 	ErrUnauthorized = errors.New("unauthorized request")
+	// ErrIncompleteUser user is half baked, best get them in the DB before doing funny stuff
+	ErrIncompleteUser = errors.New("cannot mutate a user that is incomplete or not in database")
 )
 
 // Role auth roles/perms
@@ -46,24 +51,37 @@ var (
 	ServerDBError = sendError("server error, could not complete your request")
 )
 
+// Common DB Queries
+var (
+	CreateUser = `INSERT {
+		email: @email,
+		emailmd5: @emailmd5,
+		username: @username,
+		description: @description,
+		verifier: @verifier,
+		created: DATE_NOW(),
+		logins: [DATE_NOW()],
+		roles: [0]
+	} INTO users OPTIONS {
+		waitForSync: true
+	} RETURN NEW`
+	FindUSERByUsername = `FOR u IN users FILTER u.username == @username RETURN u`
+	FindUSERByEmail    = `FOR u IN users FILTER u.email == @email RETURN u`
+)
+
 // User struct describing a user account
 type User struct {
-	ID          ObjID       `json:"-" bson:"_id,omitempty"`
-	Email       string      `json:"email" bson:"email"`
-	EmailMD5    string      `json:"emailmd5" bson:"emailmd5"`
-	Username    string      `json:"username" bson:"username"`
-	Description string      `json:"description,omitempty" bson:"description,omitempty"`
-	Verifier    string      `json:"-" bson:"verifier,omitempty"`
-	Created     time.Time   `json:"created" bson:"created"`
-	Logins      []time.Time `json:"logins,omitempty" bson:"logins,omitempty"`
-	Roles       []uint64    `json:"-" bson:"roles,omitempty"`
-	Friends     []string    `json:"friends,omitempty" bson:"friends,omitempty"`
-	Exp         uint64      `json:"exp,omitempty" bson:"exp,omitempty"`
-}
-
-// Update user details in the database
-func (user *User) Update(Obj obj) error {
-	return DB.Users.UpdateId(user.ID, Obj)
+	Key         string      `json:"_key,omitempty"`
+	Email       string      `json:"email"`
+	EmailMD5    string      `json:"emailmd5"`
+	Username    string      `json:"username"`
+	Description string      `json:"description,omitempty"`
+	Verifier    string      `json:"verifier,omitempty"`
+	Created     time.Time   `json:"created"`
+	Logins      []time.Time `json:"logins,omitempty"`
+	Roles       []uint64    `json:"roles,omitempty"`
+	Friends     []string    `json:"friends,omitempty"`
+	Exp         uint64      `json:"exp,omitempty"`
 }
 
 // IsValid check that the user's username and email are valid
@@ -71,13 +89,48 @@ func (user *User) IsValid() bool {
 	return validUsernameAndEmail(user.Username, user.Email)
 }
 
+// Update update a user's details using a common map
+func (user *User) Update(query string, vars obj) error {
+	if len(user.Key) < 0 {
+		return ErrIncompleteUser
+	}
+	vars["key"] = user.Key
+	query = "FOR u in users FILTER u._key == @key UPDATE u WITH " + query + " IN users OPTIONS {keepNull: false, waitForSync: true} RETURN NEW"
+	ctx := driver.WithQueryCount(context.Background())
+	cursor, err := DB.Query(ctx, query, vars)
+	defer cursor.Close()
+	if err == nil {
+		_, err = cursor.ReadDocument(ctx, user)
+	}
+	return err
+}
+
+// UserByKey retrieve user using their db document key
+func UserByKey(key string) (User, error) {
+	var user User
+	_, err := Users.ReadDocument(context.Background(), key, &user)
+	return user, err
+}
+
+// UserByUsername get user with a certain username
+func UserByUsername(username string) (User, error) {
+	var user User
+	err := QueryOne(FindUSERByUsername, obj{"username": username}, &user)
+	return user, err
+}
+
+// UserByEmail get user with a certain email
+func UserByEmail(email string) (User, error) {
+	var user User
+	err := QueryOne(FindUSERByEmail, obj{"email": email}, &user)
+	return user, err
+}
+
 // IsUsernameAvailable checks that the username is as of yet unused
 func IsUsernameAvailable(username string) bool {
 	if validUsername(username) {
-		n, err := DB.Users.Find(obj{"username": username}).Count()
-		if err == nil && n == 0 {
-			return true
-		}
+		_, err := UserByUsername(username)
+		return err != nil
 	}
 	return false
 }
@@ -89,17 +142,14 @@ func createUser(email, username string) (User, error) {
 		return user, ErrInvalidUsernameOrEmail
 	}
 
-	user = User{
-		ID:       MakeID(),
-		Email:    email,
-		EmailMD5: GetMD5Hash(email),
-		Username: username,
-		Created:  time.Now(),
-		Roles:    []uint64{UnverifiedUser},
-		Verifier: RandStr(VerifierSize),
-	}
+	err := QueryOne(CreateUser, obj{
+		"email":    email,
+		"emailMD5": GetMD5Hash(email),
+		"username": username,
+		"roles":    []uint64{UnverifiedUser},
+		"verifier": RandStr(VerifierSize),
+	}, &user)
 
-	err := DB.Users.Insert(user)
 	if err != nil {
 		if DevMode {
 			fmt.Println("createUser - error: ", err)
@@ -107,45 +157,31 @@ func createUser(email, username string) (User, error) {
 		return user, err
 	}
 
-	magicLink := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
+	link := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
 	if DevMode {
-		magicLink = "https://localhost:" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
+		link = "https://localhost:" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
+	}
+
+	vars := obj{
+		"AppName":  AppName,
+		"Username": user.Username,
+		"Link":     link,
+		"Verifier": user.Verifier,
+	}
+	emailtxt, err := execTemplate(AuthEmailTXT, vars)
+	if err != nil {
+		return user, err
+	}
+	emailhtml, err := execTemplate(AuthEmailHTML, vars)
+	if err != nil {
+		return user, err
 	}
 
 	err = SendEmail(&Email{
 		To:      []string{user.Email},
 		Subject: UnverifiedSubject,
-		Text: []byte(`
-Hi, ` + user.Username + `!
-
-To login at ` + AppName + `, just follow this magic link:
-` + magicLink + `
-Note, this link will expire in about 15 minutes.
-If it doesn't work try logging in again from https://saul.app.
-		`),
-		HTML: []byte(`
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width,initial-scale=1.0">
-	<title>Verification Email</title>
-</head>
-<body style="font-family: Nunito, Verdunda, Helvetica, Roboto, sans-serif; text-align: center; color: hsl(0,0%,30%); background: hsl(0,0%,99%);">
-	<main style="display: block; position: relative; margin: 15px auto; padding: 5px 15px 15px 15px; max-width: 420px; background: #FFF; box-shadow: 0 2px 8px hsla(0,0%,0%,.12); border-radius: 2.5px;">
-		<h3>Hi there ` + user.Username + `!</h3>
-		Please follow the verification link to login to ` + AppName + `.
-		<br>
-		<a href="` + magicLink + `" style="display: block; font-size: 1.2em; font-weight: 600; margin: 10px auto; max-width: 180px; padding: 8px; border-radius: 2.5px; text-decoration: none; color: #fff; background: hsl(0,0%,30%); box-shadow: 0 2px 6px hsla(0,0%,0%,.12); text-shadow: 0 1px 3px hsla(0,0%,0%,.12);">
-			Login
-		</a>
-		<br>
-		<footer>
-			Note, this link will expire in about 15 minutes, just log in again from <a href="https://saul.app" style="color: inherit;">saul.app</a> if it doesn't work.
-		</footer>
-	</main>
-</body>
-</html>`),
+		Text:    emailtxt,
+		HTML:    emailhtml,
 	})
 
 	if err != nil {
@@ -159,52 +195,36 @@ If it doesn't work try logging in again from https://saul.app.
 
 func authenticateUser(user *User) error {
 	user.Verifier = RandStr(VerifierSize)
-	err := user.Update(obj{
-		"$set": obj{"verifier": user.Verifier},
-	})
+	err := user.Update(`{verifier: @verifier}`, obj{"verifier": user.Verifier})
 	if err != nil {
 		return err
 	}
 
-	magicLink := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
+	link := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
 	if DevMode {
-		magicLink = "https://localhost:" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
+		link = "https://localhost:" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
+	}
+
+	vars := obj{
+		"AppName":  AppName,
+		"Username": user.Username,
+		"Link":     link,
+		"Verifier": user.Verifier,
+	}
+	emailtxt, err := execTemplate(AuthEmailTXT, vars)
+	if err != nil {
+		return err
+	}
+	emailhtml, err := execTemplate(AuthEmailHTML, vars)
+	if err != nil {
+		return err
 	}
 
 	err = SendEmail(&Email{
 		To:      []string{user.Email},
 		Subject: VerifiedSubject,
-		Text: []byte(`
-Hi, ` + user.Username + `!
-
-To login at ` + AppName + `, just follow this magic link:
-` + magicLink + `
-Note, this link will expire in about 15 minutes.
-If it doesn't work try logging in again from https://saul.app.
-		`),
-		HTML: []byte(`
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width,initial-scale=1.0">
-	<title>Verification Email</title>
-</head>
-<body style="font-family: Nunito, Verdunda, Helvetica, Roboto, sans-serif; text-align: center; color: hsl(0,0%,30%); background: hsl(0,0%,99%);">
-	<main style="display: block; position: relative; margin: 15px auto; padding: 5px 15px 15px 15px; max-width: 420px; background: #FFF; box-shadow: 0 2px 8px hsla(0,0%,0%,.12); border-radius: 2.5px;">
-		<h3>Hi there ` + user.Username + `!</h3>
-		Please follow the verification link to login to ` + AppName + `.
-		<br>
-		<a href="` + magicLink + `" style="display: block; font-size: 1.2em; font-weight: 600; margin: 10px auto; max-width: 180px; padding: 8px; border-radius: 2.5px; text-decoration: none; color: #fff; background: hsl(0,0%,30%); box-shadow: 0 2px 6px hsla(0,0%,0%,.12); text-shadow: 0 1px 3px hsla(0,0%,0%,.12);">
-			Login
-		</a>
-		<br>
-		<footer>
-			Note, this link will expire in about 15 minutes, just log in again from <a href="https://saul.app" style="color: inherit;">saul.app</a> if it doesn't work.
-		</footer>
-	</main>
-</body>
-</html>`),
+		Text:    emailtxt,
+		HTML:    emailhtml,
 	})
 
 	return err
@@ -214,49 +234,18 @@ func verifyUser(user *User, verifier string) error {
 	if user.Verifier != verifier {
 		return ErrUnauthorized
 	}
-	err := user.Update(obj{
-		"$unset": obj{"verifier": verifier},
-		"$addToSet": obj{
-			"roles":  VerifiedUser,
-			"logins": time.Now(),
-		},
+	return user.Update(`{
+		verifier: null,
+		roles: PUSH(REMOVE_VALUE(u.roles, @unverified), @verified)
+	}`, obj{
+		"unverified": UnverifiedUser,
+		"verified":   VerifiedUser,
 	})
-
-	for _, val := range user.Roles {
-		if val == UnverifiedUser {
-			err = user.Update(obj{
-				"$pull": obj{"roles": UnverifiedUser},
-			})
-		}
-	}
-
-	return err
-}
-
-// UserByID get user with a certain _id property
-func UserByID(id string) (User, error) {
-	var user User
-	err := DB.Users.FindId(id).One(&user)
-	return user, err
-}
-
-// UserByUsername get user with a certain username
-func UserByUsername(username string) (User, error) {
-	var user User
-	err := DB.Users.Find(obj{"username": username}).One(&user)
-	return user, err
-}
-
-// UserByEmail get user with a certain email
-func UserByEmail(email string) (User, error) {
-	var user User
-	err := DB.Users.Find(obj{"email": email}).One(&user)
-	return user, err
 }
 
 // GenerateAuthToken create a branca token
-func GenerateAuthToken(userID string) string {
-	token, err := Branca.EncodeToString(userID)
+func GenerateAuthToken(payload string) string {
+	token, err := Tokenator.Encode(payload)
 	if err != nil {
 		panic(err)
 	}
@@ -266,10 +255,11 @@ func GenerateAuthToken(userID string) string {
 // ValidateAuthToken and return a user if ok
 func ValidateAuthToken(token string) (User, bool) {
 	var user User
-	tkn, err := Branca.DecodeToken(token)
+	payload, _, err := Tokenator.Decode(token)
 	ok := err == nil
 	if ok {
-		ok = DB.Users.FindId(tkn.Payload).One(&user) != nil
+		user, err = UserByKey(payload)
+		ok = err == nil
 	}
 	return user, ok
 }
@@ -342,23 +332,9 @@ func initAuth() {
 			return UnauthorizedError(c)
 		}
 
-		token := GenerateAuthToken(user.ID.String())
+		token := GenerateAuthToken(user.Key)
 		if c.Param("mode") == "web" {
-			return c.HTML(
-				203,
-				`<!DOCTYPE html>
-					<html>
-					<head>
-						<meta charset="utf-8">
-						<title>`+AppName+` Auth Redirect</title>
-	    			<script>
-							localStorage.setItem("token", "`+token+`")
-							localStorage.setItem("username", "`+user.Username+`")
-							location.replace("/")
-						</script>
-	  			</head>
-					</html>`,
-			)
+			return c.HTML(203, `<!DOCTYPE html><html><head><meta charset="utf-8"><title>`+AppName+` Auth Redirect</title><script>localStorage.setItem("token", "`+token+`"); localStorage.setItem("username", "`+user.Username+`");location.replace("/")</script></head></html>`)
 		}
 		return c.JSON(203, obj{"token": token, "username": username})
 	})
