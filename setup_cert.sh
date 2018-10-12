@@ -1,0 +1,1 @@
+certbot certonly --standalone --preferred-challenges http -d blog.saul.app
