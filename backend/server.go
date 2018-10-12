@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/tidwall/gjson"
-	//	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 type obj = map[string]interface{}
@@ -123,13 +123,13 @@ func Init(configfile string) {
 			Config.Get("https_key").String(),
 		))
 	} else {
-		//Server.AutoTLSManager.HostPolicy = autocert.HostWhitelist(Config.Get("domain").String())
-		//Server.AutoTLSManager.Cache = autocert.DirCache(Config.Get("privates").String())
-		//Server.Logger.Fatal(Server.StartAutoTLS(":" + Config.Get("port").String())
-		Server.Logger.Fatal(Server.StartTLS(
+		Server.AutoTLSManager.HostPolicy = autocert.HostWhitelist(Config.Get("domain").String())
+		Server.AutoTLSManager.Cache = autocert.DirCache(Config.Get("privates").String())
+		Server.Logger.Fatal(Server.StartAutoTLS(":" + Config.Get("port").String()))
+		/*Server.Logger.Fatal(Server.StartTLS(
 			":"+Config.Get("port").String(),
 			"/etc/letsencrypt/live/"+Config.Get("domain").String()+"/cert.pem",
 			"/etc/letsencrypt/live/"+Config.Get("domain").String()+"/privkey.pem",
-		))
+		))*/
 	}
 }
