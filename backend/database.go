@@ -16,18 +16,18 @@ var (
 	Users driver.Collection
 )
 
-func setupDB(endpoints []string, dbname, username, password string) {
+func setupDB(endpoint string, dbname string) {
 	// Create an HTTP connection to the database
 	conn, err := http.NewConnection(http.ConnectionConfig{
-		Endpoints: endpoints,
+		Endpoints: []string{endpoint},
 	})
 	if err != nil {
 		log.Fatalf("Failed to create HTTP connection: %v", err)
 	}
 
 	client, err := driver.NewClient(driver.ClientConfig{
-		Connection:     conn,
-		Authentication: driver.BasicAuthentication(username, password),
+		Connection: conn,
+		// Authentication: driver.BasicAuthentication(username, password),
 	})
 	if err != nil {
 		fmt.Println("Could not get proper arangodb client:")
