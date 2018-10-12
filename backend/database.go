@@ -27,8 +27,9 @@ func setupDB(endpoints []string, dbname, username, password string) {
 
 	client, err := driver.NewClient(driver.ClientConfig{
 		Connection:     conn,
-		Authentication: driver.BasicAuthentication(username, password),
+		Authentication: driver.JWTAuthentication(username, password),
 	})
+
 	if err != nil {
 		fmt.Println("Could not get proper arangodb client:")
 		panic(err)
