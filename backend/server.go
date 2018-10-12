@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"text/template"
+	"html/template"
 	"time"
 
 	"github.com/SaulDoesCode/echo-memfile"
