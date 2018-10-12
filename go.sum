@@ -34,6 +34,8 @@ github.com/sauldoescode/saul.app/backend v0.0.0-20181012150313-9fc8b91c0761 h1:N
 github.com/sauldoescode/saul.app/backend v0.0.0-20181012150313-9fc8b91c0761/go.mod h1:e7BBOUXkaKJJ0nH0UH8RfkBBqWumsSAlut2U9uF69l8=
 github.com/sauldoescode/saul.app/backend v0.0.0-20181012150910-5375d339c4eb h1:7CeuNjijwba6ybE8ICTF5KLbzQvSEgWWc9qTcVDGqNY=
 github.com/sauldoescode/saul.app/backend v0.0.0-20181012150910-5375d339c4eb/go.mod h1:e7BBOUXkaKJJ0nH0UH8RfkBBqWumsSAlut2U9uF69l8=
+github.com/sauldoescode/saul.app/backend v0.0.0-20181012153605-cf6716536246 h1:EmPgOjafRHTG6ZiuUanJP14w2Gwr8p8+VfsLBS5zniY=
+github.com/sauldoescode/saul.app/backend v0.0.0-20181012153605-cf6716536246/go.mod h1:e7BBOUXkaKJJ0nH0UH8RfkBBqWumsSAlut2U9uF69l8=
 github.com/shurcooL/sanitized_anchor_name v0.0.0-20170918181015-86672fcb3f95 h1:/vdW8Cb7EXrkqWGufVMES1OH2sU9gKVb2n9/1y5NMBY=
 github.com/shurcooL/sanitized_anchor_name v0.0.0-20170918181015-86672fcb3f95/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=

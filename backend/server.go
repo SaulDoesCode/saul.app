@@ -86,8 +86,10 @@ func Init(configfile string) {
 	}))
 
 	setupDB(
-		"http://" + Config.Get("db_username").String() + ":" + Config.Get("db_password").String() + "@localhost:8529",
+		[]string{"http://localhost:8529"},
 		Config.Get("db_name").String(),
+		Config.Get("db_username").String(),
+		Config.Get("db_password").String(),
 	)
 
 	AuthEmailHTML = template.Must(template.ParseFiles("./templates/authemail.html"))
