@@ -1,19 +1,21 @@
 package backend
 
 import (
+	"bytes"
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"os"
 	"strconv"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/russross/blackfriday"
 	"github.com/tidwall/gjson"
-	"gopkg.in/russross/blackfriday.v2"
 )
 
 var (
@@ -123,4 +125,10 @@ func UnmarshalJSONFile(location string, marshaled interface{}) error {
 // Int64ToString convert int64 to strings (for ports and stuff when you want to make json less stringy)
 func Int64ToString(n int64) string {
 	return strconv.FormatInt(n, 10)
+}
+
+func execTemplate(temp *template.Template, vars obj) ([]byte, error) {
+	var buf bytes.Buffer
+	err := temp.Execute(&buf, vars)
+	return buf.Bytes(), err
 }
