@@ -2,9 +2,9 @@ package backend
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
-	"html/template"
 	"time"
 
 	"github.com/SaulDoesCode/echo-memfile"
@@ -25,6 +25,8 @@ var (
 	AuthEmailTXT *template.Template
 	// AppName name of this application
 	AppName string
+	// AppDomain web domain of this application
+	AppDomain string
 	// Config file data as gjson result
 	Config gjson.Result
 	// Server the echo instance running the show
@@ -33,6 +35,8 @@ var (
 	DevMode = false
 	// Tokenator token generator/decoder
 	Tokenator *Branca
+	// Verinator token generator/decoder for verification codes only
+	Verinator *Branca
 	// VerifierSize size of pre-token verification code
 	VerifierSize = 14
 )
@@ -53,7 +57,7 @@ func Init(configfile string) {
 	}))
 
 	MFI := memfile.New(Server, Config.Get("assets").String(), DevMode)
-	
+
 	if DevMode {
 		MFI.UpdateOnInterval(time.Millisecond * 400)
 	} else {
@@ -61,6 +65,7 @@ func Init(configfile string) {
 	}
 
 	AppName = Config.Get("appname").String()
+	AppDomain = Config.Get("domain").String()
 
 	fmt.Println("Firing up: ", AppName+"...")
 	fmt.Println("DevMode: ", DevMode)
@@ -99,7 +104,9 @@ func Init(configfile string) {
 	defer stopEmailer()
 
 	Tokenator = NewBranca(Config.Get("token_secret").String())
-	Tokenator.SetTTL(900)
+	Tokenator.SetTTL(86400 * 7)
+	Verinator = NewBranca(Config.Get("verifier_secret").String())
+	Verinator.SetTTL(925)
 
 	initAuth()
 
@@ -124,8 +131,8 @@ func Init(configfile string) {
 	} else {
 		Server.Logger.Fatal(Server.StartTLS(
 			":"+Config.Get("port").String(),
-			"/etc/letsencrypt/live/"+Config.Get("domain").String()+"/cert.pem",
-			"/etc/letsencrypt/live/"+Config.Get("domain").String()+"/privkey.pem",
+			"/etc/letsencrypt/live/"+AppDomain+"/cert.pem",
+			"/etc/letsencrypt/live/"+AppDomain+"/privkey.pem",
 		))
 	}
 }

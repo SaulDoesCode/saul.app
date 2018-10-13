@@ -1,26 +1,26 @@
 package backend
 
 import (
-	"time"
-
 	"github.com/Machiel/slugify"
 )
 
 // Writ - struct representing a post or document in the database
 type Writ struct {
-	Key         string      `json:"_key"`
-	Title       string      `json:"title"`
-	Author      string      `json:"author"`
-	Content     string      `json:"content"`
-	Markdown    string      `json:"markdown"`
-	Description string      `json:"description"`
-	Slug        string      `json:"slug"`
-	Tags        []string    `json:"tags"`
-	Edits       []time.Time `json:"edits"`
-	Created     time.Time   `json:"created"`
-	Views       int64       `json:"views"`
-	Likes       int64       `json:"likes"`
-	Published   bool        `json:"published"`
+	Key         string   `json:"_key"`
+	Title       string   `json:"title"`
+	Author      string   `json:"author"`
+	Content     string   `json:"content"`
+	Markdown    string   `json:"markdown,omitempty"`
+	Description string   `json:"description"`
+	Slug        string   `json:"slug"`
+	Tags        []string `json:"tags"`
+	Edits       []int64  `json:"edits"`
+	Created     int64    `json:"created"`
+	Views       int64    `json:"views"`
+	Likes       int64    `json:"likes"`
+	Public      bool     `json:"public"`
+	MembersOnly bool     `json:"membersonly"`
+	Roles       []int64  `json:"roles"`
 }
 
 // Slugify generate and set .Slug from .Title

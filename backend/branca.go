@@ -35,7 +35,7 @@ type Branca struct {
 	timestamp uint32
 }
 
-// SetTTL sets a Time To Live on the token for valid tokens.
+// SetTTL sets a Time To Live (in seconds) on the token for valid tokens.
 func (b *Branca) SetTTL(ttl uint32) {
 	b.ttl = ttl
 }
@@ -101,23 +101,24 @@ func (b *Branca) Encode(data string) (string, error) {
 	return base62.Encode(token), nil
 }
 
-// Decode decode token and return Token struct containing the timestamp and payload if valid
-func (b *Branca) Decode(data string) (string, time.Time, error) {
+// Decode decode token and return payload string, expiration time.Time, and an error if any
+func (b *Branca) Decode(data string) (string, time.Time, time.Time, error) {
 	var (
-		Timestamp time.Time
-		Payload   string
+		Timestamp  time.Time
+		Expiration time.Time
+		Payload    string
 	)
 
 	if len(data) < 62 {
-		return Payload, Timestamp, ErrInvalidToken
+		return Payload, Expiration, Timestamp, ErrInvalidToken
 	}
 	base62, err := NewBaseEncoding(base62)
 	if err != nil {
-		return Payload, Timestamp, ErrInvalidToken
+		return Payload, Expiration, Timestamp, ErrInvalidToken
 	}
 	token, err := base62.Decode(data)
 	if err != nil {
-		return Payload, Timestamp, ErrInvalidToken
+		return Payload, Expiration, Timestamp, ErrInvalidToken
 	}
 	header := token[0:29]
 	ciphertext := token[29:]
@@ -126,32 +127,32 @@ func (b *Branca) Decode(data string) (string, time.Time, error) {
 	nonce := header[5:]
 
 	if tokenversion != version {
-		return Payload, Timestamp, ErrInvalidTokenVersion
+		return Payload, Expiration, Timestamp, ErrInvalidTokenVersion
 	}
 
 	key := bytes.NewBufferString(b.Key).Bytes()
 
 	xchacha, err := chacha20poly1305.NewX(key)
 	if err != nil {
-		return Payload, Timestamp, ErrBadKeyLength
+		return Payload, Expiration, Timestamp, ErrBadKeyLength
 	}
 	payload, err := xchacha.Open(nil, nonce, ciphertext, header)
 	if err != nil {
-		return Payload, Timestamp, err
+		return Payload, Expiration, Timestamp, err
 	}
 
 	Payload = bytes.NewBuffer(payload).String()
 
 	if b.ttl != 0 {
-		future := int64(timestamp + b.ttl)
-		now := time.Now().Unix()
-		if future < now {
-			return Payload, Timestamp, ErrExpiredToken
+		expiration := int64(timestamp + b.ttl)
+		if expiration < time.Now().Unix() {
+			return Payload, Expiration, Timestamp, ErrExpiredToken
 		}
 		Timestamp = time.Unix(int64(timestamp), 0)
+		Expiration = time.Unix(expiration, 0)
 	}
 
-	return Payload, Timestamp, nil
+	return Payload, Expiration, Timestamp, err
 }
 
 // Encoding is a custom base encoding defined by an alphabet.

@@ -18,13 +18,12 @@ var (
 	EmailTLSConfig *tls.Config
 	SMTPAuth       smtp.Auth
 	EmailConf      = struct {
-		Connections int
-		Address     string
-		Server      string
-		Port        string
-		FromTxt     string
-		Email       string
-		Password    string
+		Address  string
+		Server   string
+		Port     string
+		FromTxt  string
+		Email    string
+		Password string
 	}{}
 	// ErrInvalidEmail bad email
 	ErrInvalidEmail = errors.New(`Invalid Email Address`)

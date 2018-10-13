@@ -79,9 +79,9 @@ func Query(query string, vars obj) ([]obj, error) {
 func QueryOne(query string, vars obj, result interface{}) error {
 	ctx := driver.WithQueryCount(context.Background())
 	cursor, err := DB.Query(ctx, query, vars)
-	defer cursor.Close()
 	if err == nil {
 		_, err = cursor.ReadDocument(ctx, result)
+		cursor.Close()
 	}
 	return err
 }

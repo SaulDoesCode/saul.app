@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/microcosm-cc/bluemonday"
@@ -131,4 +132,13 @@ func execTemplate(temp *template.Template, vars obj) ([]byte, error) {
 	var buf bytes.Buffer
 	err := temp.Execute(&buf, vars)
 	return buf.Bytes(), err
+}
+
+func unix2time(unix string) (time.Time, error) {
+	var tm time.Time
+	i, err := strconv.ParseInt(unix, 10, 64)
+	if err == nil {
+		tm = time.Unix(i, 0)
+	}
+	return tm, err
 }

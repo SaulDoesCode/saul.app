@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/arangodb/go-driver"
@@ -19,7 +20,7 @@ var (
 )
 
 // Role auth roles/perms
-type Role = uint64
+type Role = int64
 
 const (
 	// UnverifiedUser user with unconfirmed email
@@ -57,31 +58,28 @@ var (
 		email: @email,
 		emailmd5: @emailmd5,
 		username: @username,
-		description: @description,
-		verifier: @verifier,
 		created: DATE_NOW(),
 		logins: [DATE_NOW()],
-		roles: [0]
-	} INTO users OPTIONS {
-		waitForSync: true
-	} RETURN NEW`
+		roles: @roles
+	} INTO users OPTIONS {waitForSync: true} RETURN NEW`
 	FindUSERByUsername = `FOR u IN users FILTER u.username == @username RETURN u`
 	FindUSERByEmail    = `FOR u IN users FILTER u.email == @email RETURN u`
+	FindUserByDetails  = `FOR u IN users FILTER u.email == @email && u.username == @username RETURN u`
 )
 
 // User struct describing a user account
 type User struct {
-	Key         string      `json:"_key,omitempty"`
-	Email       string      `json:"email"`
-	EmailMD5    string      `json:"emailmd5"`
-	Username    string      `json:"username"`
-	Description string      `json:"description,omitempty"`
-	Verifier    string      `json:"verifier,omitempty"`
-	Created     time.Time   `json:"created"`
-	Logins      []time.Time `json:"logins,omitempty"`
-	Roles       []uint64    `json:"roles,omitempty"`
-	Friends     []string    `json:"friends,omitempty"`
-	Exp         uint64      `json:"exp,omitempty"`
+	Key         string   `json:"_key,omitempty"`
+	Email       string   `json:"email"`
+	EmailMD5    string   `json:"emailmd5"`
+	Username    string   `json:"username"`
+	Description string   `json:"description,omitempty"`
+	Verifier    string   `json:"verifier,omitempty"`
+	Created     int64    `json:"created,omitempty"`
+	Logins      []int64  `json:"logins,omitempty"`
+	Roles       []Role   `json:"roles,omitempty"`
+	Friends     []string `json:"friends,omitempty"`
+	Exp         int64    `json:"exp,omitempty"`
 }
 
 // IsValid check that the user's username and email are valid
@@ -105,6 +103,23 @@ func (user *User) Update(query string, vars obj) error {
 	return err
 }
 
+// Verified check that a user has verified their email at least once
+func (user *User) Verified() bool {
+	for _, val := range user.Roles {
+		if val == VerifiedUser {
+			return true
+		}
+	}
+	return false
+}
+
+// SetupVerifier initiate verification process with verifier and db update
+func (user *User) SetupVerifier() error {
+	return user.Update("{verifier: @verifier}", obj{
+		"verifier": GenerateVerifier(user.Key),
+	})
+}
+
 // UserByKey retrieve user using their db document key
 func UserByKey(key string) (User, error) {
 	var user User
@@ -115,6 +130,9 @@ func UserByKey(key string) (User, error) {
 // UserByUsername get user with a certain username
 func UserByUsername(username string) (User, error) {
 	var user User
+	if !validUsername(username) {
+		return user, ErrInvalidUsernameOrEmail
+	}
 	err := QueryOne(FindUSERByUsername, obj{"username": username}, &user)
 	return user, err
 }
@@ -122,7 +140,23 @@ func UserByUsername(username string) (User, error) {
 // UserByEmail get user with a certain email
 func UserByEmail(email string) (User, error) {
 	var user User
+	if !validEmail(email) {
+		return user, ErrInvalidUsernameOrEmail
+	}
 	err := QueryOne(FindUSERByEmail, obj{"email": email}, &user)
+	return user, err
+}
+
+// UserByDetails attempt to get a user via their email/username combo
+func UserByDetails(email, username string) (User, error) {
+	var user User
+	if !validEmail(email) || !validUsername(username) {
+		return user, ErrInvalidUsernameOrEmail
+	}
+	err := QueryOne(FindUserByDetails, obj{
+		"email":    email,
+		"username": username,
+	}, &user)
 	return user, err
 }
 
@@ -135,31 +169,43 @@ func IsUsernameAvailable(username string) bool {
 	return false
 }
 
-func createUser(email, username string) (User, error) {
-	var user User
-
-	if IsUsernameAvailable(username) && !validEmail(email) {
-		return user, ErrInvalidUsernameOrEmail
-	}
-
-	err := QueryOne(CreateUser, obj{
-		"email":    email,
-		"emailMD5": GetMD5Hash(email),
-		"username": username,
-		"roles":    []uint64{UnverifiedUser},
-		"verifier": RandStr(VerifierSize),
-	}, &user)
-
+// AuthenticateUser create and/or authenticate a user
+func AuthenticateUser(email, username string) (User, error) {
+	user, err := UserByDetails(email, username)
 	if err != nil {
 		if DevMode {
-			fmt.Println("createUser - error: ", err)
+			fmt.Println("Authentication no user with those details - error: ", err)
+		}
+
+		if IsUsernameAvailable(username) && !validEmail(email) {
+			return user, ErrInvalidUsernameOrEmail
+		}
+
+		err = QueryOne(CreateUser, obj{
+			"email":    email,
+			"emailmd5": GetMD5Hash(email),
+			"username": username,
+			"roles":    []Role{UnverifiedUser},
+		}, &user)
+		if err != nil {
+			if DevMode {
+				fmt.Println("Autentication - error: ", err)
+			}
+			return user, err
+		}
+	}
+
+	err = user.SetupVerifier()
+	if err != nil {
+		if DevMode {
+			fmt.Println("Autentication verifier setup troubles - error: ", err)
 		}
 		return user, err
 	}
 
-	link := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
+	link := "https://blog.saul.app/auth/" + user.Verifier
 	if DevMode {
-		link = "https://localhost:" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
+		link = "https://localhost:" + Config.Get("devPort").String() + "/auth/" + user.Verifier
 	}
 
 	vars := obj{
@@ -170,77 +216,80 @@ func createUser(email, username string) (User, error) {
 	}
 	emailtxt, err := execTemplate(AuthEmailTXT, vars)
 	if err != nil {
+		if DevMode {
+			fmt.Println("Autentication email text template - error: ", err)
+		}
 		return user, err
 	}
 	emailhtml, err := execTemplate(AuthEmailHTML, vars)
 	if err != nil {
+		if DevMode {
+			fmt.Println("Autentication email html template - error: ", err)
+		}
 		return user, err
+	}
+
+	subject := UnverifiedSubject
+	if user.Verified() {
+		subject = VerifiedSubject
 	}
 
 	err = SendEmail(&Email{
 		To:      []string{user.Email},
-		Subject: UnverifiedSubject,
+		Subject: subject,
 		Text:    emailtxt,
 		HTML:    emailhtml,
 	})
-
-	if err != nil {
-		if DevMode {
-			fmt.Println("createUser - emailing error: ", err)
-		}
+	if err != nil && DevMode {
+		fmt.Println(`Could not send email to `+user.Email+` because: `, err)
 	}
-
 	return user, err
 }
 
-func authenticateUser(user *User) error {
-	user.Verifier = RandStr(VerifierSize)
-	err := user.Update(`{verifier: @verifier}`, obj{"verifier": user.Verifier})
+// GenerateVerifier create a branca token
+func GenerateVerifier(key string) string {
+	token, err := Verinator.Encode(key)
 	if err != nil {
-		return err
+		panic(err)
 	}
-
-	link := "https://saul.app/auth/" + user.Username + "/" + user.Verifier + "/web"
-	if DevMode {
-		link = "https://localhost:" + Config.Get("devPort").String() + "/auth/" + user.Username + "/" + user.Verifier + "/web"
-	}
-
-	vars := obj{
-		"AppName":  AppName,
-		"Username": user.Username,
-		"Link":     link,
-		"Verifier": user.Verifier,
-	}
-	emailtxt, err := execTemplate(AuthEmailTXT, vars)
-	if err != nil {
-		return err
-	}
-	emailhtml, err := execTemplate(AuthEmailHTML, vars)
-	if err != nil {
-		return err
-	}
-
-	err = SendEmail(&Email{
-		To:      []string{user.Email},
-		Subject: VerifiedSubject,
-		Text:    emailtxt,
-		HTML:    emailhtml,
-	})
-
-	return err
+	return token
 }
 
-func verifyUser(user *User, verifier string) error {
-	if user.Verifier != verifier {
-		return ErrUnauthorized
+// VerifyUser from a verifier token, check that a user has verified their email at least once
+func VerifyUser(verifier string) (*User, error) {
+	var user *User
+	key, _, _, err := Verinator.Decode(verifier)
+	if err != nil {
+		if DevMode {
+			fmt.Println(`VerifyUser Decoding Error: `, err)
+		}
+		return user, ErrUnauthorized
 	}
-	return user.Update(`{
-		verifier: null,
-		roles: PUSH(REMOVE_VALUE(u.roles, @unverified), @verified)
-	}`, obj{
-		"unverified": UnverifiedUser,
-		"verified":   VerifiedUser,
-	})
+	usr, err := UserByKey(key)
+	user = &usr
+	if err != nil || user.Verifier != verifier {
+		if DevMode {
+			fmt.Println(`VerifyUser Error - either no such user or the verifier didn't match: `, err)
+		}
+		return user, ErrUnauthorized
+	}
+
+	if user.Verified() {
+		err = user.Update(`{verifier: null}`, obj{})
+	} else {
+		err = user.Update(`{
+			verifier: null,
+			roles: PUSH(REMOVE_VALUE(u.roles, @unverified), @verified)
+		}`, obj{
+			"unverified": UnverifiedUser,
+			"verified":   VerifiedUser,
+		})
+	}
+
+	if err != nil && DevMode {
+		fmt.Println(`VerifyUser Error: `, err)
+	}
+	return user, err
 }
 
 // GenerateAuthToken create a branca token
@@ -255,13 +304,52 @@ func GenerateAuthToken(payload string) string {
 // ValidateAuthToken and return a user if ok
 func ValidateAuthToken(token string) (User, bool) {
 	var user User
-	payload, _, err := Tokenator.Decode(token)
+	payload, _, _, err := Tokenator.Decode(token)
 	ok := err == nil
 	if ok {
 		user, err = UserByKey(payload)
 		ok = err == nil
 	}
 	return user, ok
+}
+
+// AuthHandle create a GET route, accessible only to authenticated users
+func AuthHandle(Method string, location string, handle func(ctx, User) error) {
+	Server.GET(location, func(c ctx) error {
+		cookie, err := c.Cookie("Auth")
+		if err != nil {
+			if DevMode {
+				fmt.Println("AuthHandle - error: ", err)
+			}
+			return UnauthorizedError(c)
+		}
+
+		key, expiration, _, err := Tokenator.Decode(cookie.Value)
+		if err != nil {
+			if DevMode {
+				fmt.Println("AuthHandle Decoding - error: ", err)
+			}
+			return UnauthorizedError(c)
+		}
+
+		user, err := UserByKey(key)
+		if err != nil {
+			return UnauthorizedError(c)
+		}
+
+		if expiration.After(time.Now().Add(time.Hour * 48)) {
+			// refresh the auth token if it's about to go bad
+			c.SetCookie(&http.Cookie{
+				Name:     "Auth",
+				Value:    GenerateAuthToken(user.Key),
+				Expires:  time.Now().Add(time.Hour * (24 * 7)),
+				SameSite: http.SameSiteStrictMode,
+				Domain:   AppDomain,
+			})
+		}
+
+		return handle(c, user)
+	})
 }
 
 func initAuth() {
@@ -288,16 +376,7 @@ func initAuth() {
 			return BadUsernameError(c)
 		}
 
-		user, err := UserByEmail(email)
-		if err == nil {
-			if user.Username != username {
-				return InvalidDetailsError(c)
-			}
-			err = authenticateUser(&user)
-		} else {
-			user, err = createUser(email, username)
-		}
-
+		user, err := AuthenticateUser(email, username)
 		if err == nil {
 			return c.JSONBlob(203, []byte(`{"msg": "Thanks `+user.Username+`, we sent you an authentication email."}`))
 		} else if DevMode {
@@ -307,36 +386,24 @@ func initAuth() {
 		return UnauthorizedError(c)
 	})
 
-	Server.GET("/auth/:username/:verifier/:mode", func(c ctx) error {
-		username := c.Param("username")
-		verifier := c.Param("verifier")
-
-		if len(verifier) != VerifierSize {
-			return BadRequestError(c)
-		}
-
-		if !validUsername(username) {
-			return BadUsernameError(c)
-		}
-
-		user, err := UserByUsername(username)
-		if err != nil {
-			return UnauthorizedError(c)
-		}
-
-		err = verifyUser(&user, verifier)
+	Server.GET("/auth/:verifier", func(c ctx) error {
+		user, err := VerifyUser(c.Param("verifier"))
 		if err != nil {
 			if DevMode {
-				fmt.Println("verifyUser: ", err)
+				fmt.Println("Unable to Authenticate user: ", err)
 			}
 			return UnauthorizedError(c)
 		}
 
-		token := GenerateAuthToken(user.Key)
-		if c.Param("mode") == "web" {
-			return c.HTML(203, `<!DOCTYPE html><html><head><meta charset="utf-8"><title>`+AppName+` Auth Redirect</title><script>localStorage.setItem("token", "`+token+`"); localStorage.setItem("username", "`+user.Username+`");location.replace("/")</script></head></html>`)
-		}
-		return c.JSON(203, obj{"token": token, "username": username})
+		c.SetCookie(&http.Cookie{
+			Name:     "Auth",
+			Value:    GenerateAuthToken(user.Key),
+			Expires:  time.Now().Add(time.Hour * (24 * 7)),
+			SameSite: http.SameSiteStrictMode,
+			Domain:   AppDomain,
+		})
+
+		return c.Redirect(301, "/")
 	})
 
 	fmt.Println("Auth Handling Started")
