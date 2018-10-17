@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="author" content="Saul van der Walt">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Saul's personal site</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css">
+  <link rel="stylesheet" href="/css/prism-default.css">
+  <link rel="stylesheet" href="/css/next.css">
+  <link rel="stylesheet" href="/media/icons/fontello/css/fontello.css">
+  <script src="/js/showdown.min.js"></script>
+  <script src="https://rawgit.com/SaulDoesCode/rilti.js/experimental/dist/rilti.min.js"></script>
+  <script src="/js/next-view.js" async defer></script>
+</head>
+
+<body>
+  <nav class="hero">
+    <section class="intro">
+      <img alt="Saul van der Walt" title="Saul van der Walt" src="https://miro.medium.com/fit/c/240/240/1*ay7mOSadS-7z6ZH2pGSk2A.jpeg"
+        style="border-radius: 100%;" width="160" height="160">
+      <header class="destructureMe">
+        <span class="token keyword">const</span>
+        <span class="token punctuation">{</span>
+        coder
+        <span class="token punctuation">,</span>
+        thinker
+        <span class="token punctuation">}</span>
+        <span class="token operator">=</span> saul
+      </header>
+    </section>
+    <aside class="reach-me">
+      <a class="icon-mail" href="mailto:me@saul.app">
+        <span>me@saul.app</span>
+      </a>
+      <a class="icon-github" href="https://github.com/sauldoescode" target="_blank" rel="noopener">
+        <span>github</span>
+      </a>
+      <a class="icon-codeopen" href="https://codepen.io/SaulDoesCode/" target="_blank" rel="noopener">
+        <span>codepen</span>
+      </a>
+      <a class="icon-medium" href="https://medium.com/@saulvdw" target="_blank" rel="noopener">
+        <span>medium</span>
+      </a>
+    </aside>
+  </nav>
+  <section class="cookie-toast">
+    psst... this site's got cookies, no worries though, I don't want your info.
+    It's just so I can see how my little site is doing and make it faster.
+    <div onclick="this.parentNode.remove(); localStorage.setItem('cookie-ok', true)"></div>
+  </section>
+  <main></main>
+  <script>
+    try {
+      localStorage.getItem('cookie-ok') && document.querySelector('.cookie-toast').remove()
+    } catch (e) {}
+  </script>
+  <script src="/js/prism.js" async></script>
+</body>
+
+</html>

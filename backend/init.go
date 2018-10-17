@@ -2,7 +2,7 @@ package backend
 
 import (
 	"fmt"
-	"html/template"
+	"text/template"
 	"net/http"
 	"os"
 	"time"
@@ -23,6 +23,8 @@ var (
 	AuthEmailHTML *template.Template
 	// AuthEmailTXT html template for authentication emails
 	AuthEmailTXT *template.Template
+	// PostTemplate html template for post pages
+	PostTemplate *template.Template
 	// AppName name of this application
 	AppName string
 	// AppDomain web domain of this application
@@ -56,13 +58,13 @@ func Init(configfile string) {
 		Format: "${method}::${status} ${host}${uri}  \tlag=${latency_human}\n",
 	}))
 
-	MFI := memfile.New(Server, Config.Get("assets").String(), DevMode)
-
+	mfi := memfile.New(Server, Config.Get("assets").String(), DevMode)
 	if DevMode {
-		MFI.UpdateOnInterval(time.Millisecond * 400)
+		mfi.UpdateOnInterval(time.Millisecond * 400)
 	} else {
-		MFI.UpdateOnInterval(time.Second * 5)
+		mfi.UpdateOnInterval(time.Second * 5)
 	}
+	MFI = &mfi
 
 	AppName = Config.Get("appname").String()
 	AppDomain = Config.Get("domain").String()
@@ -91,6 +93,7 @@ func Init(configfile string) {
 
 	AuthEmailHTML = template.Must(template.ParseFiles("./templates/authemail.html"))
 	AuthEmailTXT = template.Must(template.ParseFiles("./templates/authemail.txt"))
+	PostTemplate = template.Must(template.ParseFiles("./templates/post.html"))
 
 	EmailConf.Email = Config.Get("admin_email.email").String()
 	EmailConf.Server = Config.Get("admin_email.server").String()
@@ -109,6 +112,7 @@ func Init(configfile string) {
 	Verinator.SetTTL(925)
 
 	initAuth()
+	initWrits()
 
 	go http.ListenAndServe(insecurePort, http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		target := "https://" + req.Host + req.URL.Path

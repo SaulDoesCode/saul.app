@@ -113,6 +113,16 @@ func (user *User) Verified() bool {
 	return false
 }
 
+// Verified check that a user has verified their email at least once
+func (user *User) isAdmin() bool {
+	for _, val := range user.Roles {
+		if val == Admin {
+			return true
+		}
+	}
+	return false
+}
+
 // SetupVerifier initiate verification process with verifier and db update
 func (user *User) SetupVerifier() error {
 	return user.Update("{verifier: @verifier}", obj{
@@ -181,6 +191,7 @@ func AuthenticateUser(email, username string) (User, error) {
 			return user, ErrInvalidUsernameOrEmail
 		}
 
+		user = User{}
 		err = QueryOne(CreateUser, obj{
 			"email":    email,
 			"emailmd5": GetMD5Hash(email),
@@ -189,7 +200,7 @@ func AuthenticateUser(email, username string) (User, error) {
 		}, &user)
 		if err != nil {
 			if DevMode {
-				fmt.Println("Autentication - error: ", err)
+				fmt.Println("\nAutentication - error: ", err, "\nuser:\t\n", user, "\n\t")
 			}
 			return user, err
 		}
@@ -203,7 +214,7 @@ func AuthenticateUser(email, username string) (User, error) {
 		return user, err
 	}
 
-	link := "https://blog.saul.app/auth/" + user.Verifier
+	link := "https://" + AppDomain + "/auth/" + user.Verifier
 	if DevMode {
 		link = "https://localhost:" + Config.Get("devPort").String() + "/auth/" + user.Verifier
 	}
@@ -213,6 +224,7 @@ func AuthenticateUser(email, username string) (User, error) {
 		"Username": user.Username,
 		"Link":     link,
 		"Verifier": user.Verifier,
+		"Domain":   AppDomain,
 	}
 	emailtxt, err := execTemplate(AuthEmailTXT, vars)
 	if err != nil {
@@ -258,14 +270,14 @@ func GenerateVerifier(key string) string {
 // VerifyUser from a verifier token, check that a user has verified their email at least once
 func VerifyUser(verifier string) (*User, error) {
 	var user *User
-	key, _, _, err := Verinator.Decode(verifier)
+	tk, err := Verinator.Decode(verifier)
 	if err != nil {
 		if DevMode {
 			fmt.Println(`VerifyUser Decoding Error: `, err)
 		}
 		return user, ErrUnauthorized
 	}
-	usr, err := UserByKey(key)
+	usr, err := UserByKey(tk.Payload)
 	user = &usr
 	if err != nil || user.Verifier != verifier {
 		if DevMode {
@@ -288,6 +300,7 @@ func VerifyUser(verifier string) (*User, error) {
 
 	if err != nil && DevMode {
 		fmt.Println(`VerifyUser Error: `, err)
+		panic(err)
 	}
 	return user, err
 }
@@ -304,52 +317,108 @@ func GenerateAuthToken(payload string) string {
 // ValidateAuthToken and return a user if ok
 func ValidateAuthToken(token string) (User, bool) {
 	var user User
-	payload, _, _, err := Tokenator.Decode(token)
+	tk, err := Tokenator.Decode(token)
 	ok := err == nil
 	if ok {
-		user, err = UserByKey(payload)
+		user, err = UserByKey(tk.Payload)
 		ok = err == nil
 	}
 	return user, ok
 }
 
+// CredentialCheck get an authorized user from a route handler's context
+func CredentialCheck(c ctx) (*User, error) {
+	cookie, err := c.Cookie("Auth")
+	if err != nil || cookie == nil {
+		if DevMode {
+			fmt.Println("CredentialCheck cookie troubles - error: ", err)
+		}
+		return nil, ErrUnauthorized
+	}
+
+	tk, err := Tokenator.Decode(cookie.Value)
+	if err != nil {
+		if DevMode {
+			fmt.Println("CredentialCheck Decoding - error: ", err)
+		}
+		return nil, ErrUnauthorized
+	}
+
+	user, err := UserByKey(tk.Payload)
+	if err != nil {
+		if DevMode {
+			fmt.Println("CredentialCheck User retrieval - error: ", err)
+		}
+		return nil, ErrUnauthorized
+	}
+
+	if tk.ExpiresBefore(time.Now().Add(time.Hour * 48)) {
+		// refresh the auth token if it's about to go bad
+		authCookie := &http.Cookie{
+			Name:     "Auth",
+			Value:    GenerateAuthToken(user.Key),
+			Expires:  time.Now().Add(time.Hour * (24 * 7)),
+			MaxAge:   60 * 60 * 24 * 7,
+			Path:     "/",
+			HttpOnly: true,
+		}
+		if !DevMode {
+			authCookie.Domain = AppDomain
+			authCookie.SameSite = http.SameSiteStrictMode
+		}
+		c.SetCookie(authCookie)
+	}
+
+	return &user, err
+}
+
 // AuthHandle create a GET route, accessible only to authenticated users
-func AuthHandle(Method string, location string, handle func(ctx, User) error) {
-	Server.GET(location, func(c ctx) error {
-		cookie, err := c.Cookie("Auth")
-		if err != nil {
-			if DevMode {
-				fmt.Println("AuthHandle - error: ", err)
-			}
+func AuthHandle(handle func(ctx, *User) error) func(ctx) error {
+	return func(c ctx) error {
+		user, err := CredentialCheck(c)
+		if err != nil || user == nil {
 			return UnauthorizedError(c)
 		}
-
-		key, expiration, _, err := Tokenator.Decode(cookie.Value)
-		if err != nil {
-			if DevMode {
-				fmt.Println("AuthHandle Decoding - error: ", err)
-			}
-			return UnauthorizedError(c)
-		}
-
-		user, err := UserByKey(key)
-		if err != nil {
-			return UnauthorizedError(c)
-		}
-
-		if expiration.After(time.Now().Add(time.Hour * 48)) {
-			// refresh the auth token if it's about to go bad
-			c.SetCookie(&http.Cookie{
-				Name:     "Auth",
-				Value:    GenerateAuthToken(user.Key),
-				Expires:  time.Now().Add(time.Hour * (24 * 7)),
-				SameSite: http.SameSiteStrictMode,
-				Domain:   AppDomain,
-			})
-		}
-
 		return handle(c, user)
-	})
+	}
+}
+
+// AdminHandle create a GET route, accessible only to admin users
+func AdminHandle(handle func(ctx, *User) error) func(ctx) error {
+	return func(c ctx) error {
+		user, err := CredentialCheck(c)
+		if err != nil || user == nil || !user.isAdmin() {
+			if DevMode {
+				fmt.Println(`AdminHandle for didn't go through: `, err)
+			}
+			return UnauthorizedError(c)
+		}
+		return handle(c, user)
+	}
+}
+
+// RoleHandle create a GET route, accessible only to users with certain Roles
+func RoleHandle(roles []Role, handle func(ctx, *User) error) func(ctx) error {
+	return func(c ctx) error {
+		user, err := CredentialCheck(c)
+		if err != nil {
+			return UnauthorizedError(c)
+		}
+
+		milestones := 0
+		for _, authrole := range roles {
+			for _, urole := range user.Roles {
+				if urole == authrole {
+					milestones++
+				}
+			}
+		}
+
+		if milestones == len(roles) {
+			return handle(c, user)
+		}
+		return UnauthorizedError(c)
+	}
 }
 
 func initAuth() {
@@ -380,10 +449,22 @@ func initAuth() {
 		if err == nil {
 			return c.JSONBlob(203, []byte(`{"msg": "Thanks `+user.Username+`, we sent you an authentication email."}`))
 		} else if DevMode {
-			fmt.Println("Authentication Problem: \n\tusername - ", username, "\n\temail - ", email, "\n\terror - ", err)
+			fmt.Println("\nAuthentication Problem: \n\tusername - ", username, "\n\temail - ", email, "\n\terror - ", err, "\n\t")
 		}
 
 		return UnauthorizedError(c)
+	})
+
+	Server.GET("/auth/logout", func(c ctx) error {
+		c.SetCookie(&http.Cookie{
+			Name:     "Auth",
+			Value:    "",
+			Expires:  time.Now().Truncate(time.Hour),
+			MaxAge:   1,
+			Path:     "/",
+			HttpOnly: true,
+		})
+		return nil
 	})
 
 	Server.GET("/auth/:verifier", func(c ctx) error {
@@ -395,16 +476,26 @@ func initAuth() {
 			return UnauthorizedError(c)
 		}
 
-		c.SetCookie(&http.Cookie{
+		authCookie := &http.Cookie{
 			Name:     "Auth",
 			Value:    GenerateAuthToken(user.Key),
 			Expires:  time.Now().Add(time.Hour * (24 * 7)),
-			SameSite: http.SameSiteStrictMode,
-			Domain:   AppDomain,
-		})
+			MaxAge:   60 * 60 * 24 * 7,
+			Path:     "/",
+			HttpOnly: true,
+		}
+		if !DevMode {
+			authCookie.Domain = AppDomain
+			authCookie.SameSite = http.SameSiteStrictMode
+		}
+		c.SetCookie(authCookie)
 
+		if user.isAdmin() {
+			return c.Redirect(301, "/admin")
+		}
 		return c.Redirect(301, "/")
 	})
 
 	fmt.Println("Auth Handling Started")
+	initAdmin()
 }

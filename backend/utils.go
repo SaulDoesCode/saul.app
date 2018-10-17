@@ -7,13 +7,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"os"
 	"strconv"
+	"text/template"
 	"time"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/labstack/echo"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 	"github.com/tidwall/gjson"
@@ -79,8 +80,15 @@ func MD5Hash(data []byte) string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func renderMarkdown(input []byte) []byte {
-	return bluemonday.UGCPolicy().SanitizeBytes(blackfriday.Run(input))
+var (
+	bmPolicy = bluemonday.UGCPolicy()
+)
+
+func renderMarkdown(input []byte, sanitize bool) []byte {
+	if sanitize {
+		return bmPolicy.SanitizeBytes(blackfriday.Run(input))
+	}
+	return blackfriday.Run(input)
 }
 
 func sendError(errorStr string) func(c ctx) error {
@@ -107,11 +115,26 @@ func ReadJSONFile(location string) (gjson.Result, error) {
 
 // JSONbody get echo.Context's body as a gjson.Result
 func JSONbody(c ctx) (gjson.Result, error) {
-	body, err := ioutil.ReadAll(c.Request().Body)
-	if err != nil {
-		return gjson.Result{}, err
+	var res gjson.Result
+	reqbody := c.Request().Body
+	if reqbody == nil {
+		return res, echo.ErrUnsupportedMediaType
 	}
-	return gjson.ParseBytes(body), err
+	body, err := ioutil.ReadAll(reqbody)
+	if err != nil {
+		return res, err
+	}
+	res = gjson.ParseBytes(body)
+	return res, err
+}
+
+// UnmarshalJSONBody unmarshal json data straight to struct and such
+func UnmarshalJSONBody(c ctx, result interface{}) error {
+	reqbody := c.Request().Body
+	if reqbody == nil {
+		return echo.ErrUnsupportedMediaType
+	}
+	return json.NewDecoder(reqbody).Decode(result)
 }
 
 // UnmarshalJSONFile read json files and go straight to unmarshalling
@@ -128,7 +151,7 @@ func Int64ToString(n int64) string {
 	return strconv.FormatInt(n, 10)
 }
 
-func execTemplate(temp *template.Template, vars obj) ([]byte, error) {
+func execTemplate(temp *template.Template, vars interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	err := temp.Execute(&buf, vars)
 	return buf.Bytes(), err

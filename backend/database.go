@@ -14,6 +14,8 @@ var (
 	DB driver.Database
 	// Users arangodb collection containing user data
 	Users driver.Collection
+	// Writs arangodb writ collection containing writs
+	Writs driver.Collection
 )
 
 func setupDB(endpoints []string, dbname, username, password string) {
@@ -46,13 +48,45 @@ func setupDB(endpoints []string, dbname, username, password string) {
 
 	DB = db
 	users, err := DB.Collection(nil, "users")
-	Users = users
 	if err != nil {
 		fmt.Println("Could not get users collection from db:")
 		panic(err)
 	}
+	Users = users
 
-	fmt.Println(`ArangoDB Connected. So far so good.`)
+	writs, err := DB.Collection(nil, "writs")
+	if err != nil {
+		fmt.Println("Could not get users collection from db:")
+		panic(err)
+	}
+	Writs = writs
+
+	_, _, err = Users.EnsureHashIndex(
+		nil,
+		[]string{"username", "email", "emailmd5"},
+		&driver.EnsureHashIndexOptions{Unique: true},
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	_, _, err = Users.EnsureHashIndex(
+		nil,
+		[]string{"verifier"},
+		&driver.EnsureHashIndexOptions{Unique: true, Sparse: true},
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	_, _, err = Writs.EnsureHashIndex(
+		nil,
+		[]string{"title", "tags", "slug"},
+		&driver.EnsureHashIndexOptions{Unique: true},
+	)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // Query query the app's DB with AQL, bindvars, and map that to an output
@@ -65,7 +99,7 @@ func Query(query string, vars obj) ([]obj, error) {
 		objects = []obj{}
 		for {
 			var doc obj
-			_, err := cursor.ReadDocument(ctx, &doc)
+			_, err = cursor.ReadDocument(ctx, &doc)
 			if driver.IsNoMoreDocuments(err) || err != nil {
 				break
 			}

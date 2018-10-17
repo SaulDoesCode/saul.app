@@ -2,7 +2,8 @@ module github.com/sauldoescode/saul.app
 
 require (
 	github.com/Machiel/slugify v1.0.1
-	github.com/SaulDoesCode/echo-memfile v0.0.0-20180831220007-214cdd5e6c0c
+	github.com/SaulDoesCode/echo-memfile v0.0.0-20181013154734-76efe7d27666
+	github.com/SaulDoesCode/email v0.0.0-20181017150515-8f9959dc009f
 	github.com/arangodb/go-driver v0.0.0-20180928134511-88874b717ad9
 	github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf
 	github.com/jordan-wright/email v0.0.0-20181003202814-27742b011ce5
@@ -11,6 +12,7 @@ require (
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.1
+	github.com/mitchellh/mapstructure v1.1.2
 	github.com/russross/blackfriday v2.0.0+incompatible
 	github.com/shurcooL/sanitized_anchor_name v0.0.0-20170918181015-86672fcb3f95 // indirect
 	github.com/tidwall/gjson v1.1.3

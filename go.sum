@@ -1,7 +1,10 @@
 github.com/Machiel/slugify v1.0.1 h1:EfWSlRWstMadsgzmiV7d0yVd2IFlagWH68Q+DcYCm4E=
 github.com/Machiel/slugify v1.0.1/go.mod h1:fTFGn5uWEynW4CUMG7sWkYXOf1UgDxyTM3DbR6Qfg3k=
-github.com/SaulDoesCode/echo-memfile v0.0.0-20180831220007-214cdd5e6c0c h1:bY4bYGm0Ltu9RM0HVnpc6yjMWb69pUpy+dTIeTGo/28=
-github.com/SaulDoesCode/echo-memfile v0.0.0-20180831220007-214cdd5e6c0c/go.mod h1:oOBaNj3o2CBZASOUt8JwEvwhbu+/zmJE5sO7pADXPjA=
+github.com/SaulDoesCode/echo-memfile v0.0.0-20181013154734-76efe7d27666 h1:NTVScFlZ5bCeOP/do9NgsnLBw7ZvN4RZkJk6HD8BzH4=
+github.com/SaulDoesCode/echo-memfile v0.0.0-20181013154734-76efe7d27666/go.mod h1:oOBaNj3o2CBZASOUt8JwEvwhbu+/zmJE5sO7pADXPjA=
+github.com/SaulDoesCode/email v0.0.0-20181017150515-8f9959dc009f h1:ZSKnnB56CU2M2+N263GFeQGzLdV5QJsEUQJvmVhFQzk=
+github.com/SaulDoesCode/email v0.0.0-20181017150515-8f9959dc009f/go.mod h1:B7ENt2HcabLSMfrYlwXZH+H6XjhlPihp1p0b8jb4BN4=
+github.com/SaulDoesCode/saul.app v0.0.0-20181013133148-7e2b074a7daf h1:BGE0NN4HkGsw18/p8ovLkxqbWCwDCy6F/8+JPh4Z1W4=
 github.com/arangodb/go-driver v0.0.0-20180928134511-88874b717ad9 h1:aal0+R2Kw90/bhmZFrI8lEtXMuWQox2/zyrvfTmHjmE=
 github.com/arangodb/go-driver v0.0.0-20180928134511-88874b717ad9/go.mod h1:NcDoR4f0FdFia/QizCc+B69DggPGLP3nCKg5IUtudm0=
 github.com/arangodb/go-velocypack v0.0.0-20180928134037-d177e3455691 h1:62SGGAvrKTXOrewra74du0H98Yg/eufQ/tO3RoIP8Bs=
@@ -24,6 +27,8 @@ github.com/mattn/go-isatty v0.0.4 h1:bnP0vzxcAdeI1zdubAl5PjU6zsERjGZb7raWodagDYs
 github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
 github.com/microcosm-cc/bluemonday v1.0.1 h1:SIYunPjnlXcW+gVfvm0IlSeR5U3WZUOLfVmqg85Go44=
 github.com/microcosm-cc/bluemonday v1.0.1/go.mod h1:hsXNsILzKxV+sX77C5b8FSuKF00vh2OMYv+xgHpAMF4=
+github.com/mitchellh/mapstructure v1.1.2 h1:fmNYVwqnSfB9mZU6OS2O6GsXM+wcskZDuKQzvN1EDeE=
+github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/russross/blackfriday v2.0.0+incompatible h1:cBXrhZNUf9C+La9/YpS+UHpUT8YD6Td9ZMSU9APFcsk=
 github.com/russross/blackfriday v2.0.0+incompatible/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
