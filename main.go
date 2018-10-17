@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/sauldoescode/saul.app/backend"
+	"github.com/SaulDoesCode/saul.app/backend"
 )
 
 func main() {

@@ -2,7 +2,6 @@ github.com/Machiel/slugify v1.0.1 h1:EfWSlRWstMadsgzmiV7d0yVd2IFlagWH68Q+DcYCm4E
 github.com/Machiel/slugify v1.0.1/go.mod h1:fTFGn5uWEynW4CUMG7sWkYXOf1UgDxyTM3DbR6Qfg3k=
 github.com/SaulDoesCode/echo-memfile v0.0.0-20181013154734-76efe7d27666 h1:NTVScFlZ5bCeOP/do9NgsnLBw7ZvN4RZkJk6HD8BzH4=
 github.com/SaulDoesCode/echo-memfile v0.0.0-20181013154734-76efe7d27666/go.mod h1:oOBaNj3o2CBZASOUt8JwEvwhbu+/zmJE5sO7pADXPjA=
-github.com/SaulDoesCode/saul.app v0.0.0-20181017153018-c74a1debef29 h1:lbrdZxCKnpL77QmZ17AhPG3TuccOHHPMtIV3M5CzEtA=
 github.com/arangodb/go-driver v0.0.0-20180928134511-88874b717ad9 h1:aal0+R2Kw90/bhmZFrI8lEtXMuWQox2/zyrvfTmHjmE=
 github.com/arangodb/go-driver v0.0.0-20180928134511-88874b717ad9/go.mod h1:NcDoR4f0FdFia/QizCc+B69DggPGLP3nCKg5IUtudm0=
 github.com/arangodb/go-velocypack v0.0.0-20180928134037-d177e3455691 h1:62SGGAvrKTXOrewra74du0H98Yg/eufQ/tO3RoIP8Bs=
