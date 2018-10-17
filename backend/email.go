@@ -10,7 +10,7 @@ import (
 	"net/smtp"
 	"net/textproto"
 
-	"github.com/SaulDoesCode/saul.app/backend/email"
+	"github.com/SaulDoesCode/saul.app/email"
 )
 
 // Email - alias for jordan-wright/email Email struct
