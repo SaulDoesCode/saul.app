@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log"
 
@@ -26,7 +27,12 @@ func setupDB(endpoints []string, dbname, username, password string) {
 	// Create an HTTP connection to the database
 	conn, err := http.NewConnection(http.ConnectionConfig{
 		Endpoints: endpoints,
+		TLSConfig: &tls.Config{
+			ServerName:         AppDomain,
+			InsecureSkipVerify: true,
+		},
 	})
+
 	if err != nil {
 		log.Fatalf("Failed to create HTTP connection: %v", err)
 	}

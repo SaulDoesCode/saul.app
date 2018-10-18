@@ -80,6 +80,7 @@ type User struct {
 	Roles       []Role   `json:"roles,omitempty"`
 	Friends     []string `json:"friends,omitempty"`
 	Exp         int64    `json:"exp,omitempty"`
+	Subscriber  bool     `json:"subscriber,omitempty"`
 }
 
 // IsValid check that the user's username and email are valid
@@ -500,4 +501,26 @@ func initAuth() {
 
 	fmt.Println("Auth Handling Started")
 	initAdmin()
+
+	Server.GET("/subscribe-toggle", AuthHandle(func(c ctx, user *User) error {
+		err := user.Update("{subscriber: @subscriber}", obj{"subscriber": !user.Subscriber})
+		if err != nil {
+			mail := MakeEmail()
+			mail.To("saulvdw@gmail.com")
+			mail.Subject("Subscriber State Toggle Error: " + user.Username)
+			mail.HTML().Set(`
+				<h4>There's been a problem updating user ` + user.Username + `'s subscriber status</h4>
+				<p>err:<br>` + err.Error() + `</p>
+			`)
+			go SendEmail(mail)
+			return c.JSON(203, obj{"msg": "something happened, don't worry, we'll figure it out", "ok": false})
+		}
+		msg := "success, you are "
+		if user.Subscriber {
+			msg += "subscribed for new writs and updates"
+		} else {
+			msg += "unsubscribed and will no longer receive any (non auth related) emails from grimstack.io."
+		}
+		return c.JSON(203, obj{"msg": msg, "ok": true})
+	}))
 }
