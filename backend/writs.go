@@ -434,28 +434,19 @@ func WritByKey(key string) (Writ, error) {
 
 // InitWrit initialize a new writ
 func InitWrit(w *Writ) error {
-	if len(w.Tags) < 0 {
+	if len(w.Tags) < 1 {
 		return ErrMissingTags
 	}
-
-	if len(w.Author) < 0 {
-		return ErrIncompleteWrit
-	}
-
-	user, err := UserByUsername(w.Author)
-	if err != nil {
-		if DevMode {
-			fmt.Println("InitWrit - author ("+w.Author+") is invalid or MIA: ", err)
-		}
-		return ErrAuthorIsNoUser
-	}
-	w.AuthorKey = user.Key
 
 	ctx := driver.WithWaitForSync(context.Background(), true)
 
 	exists := true
+	var err error
 	var currentWrit Writ
 	if len(w.Key) == 0 {
+		if DevMode {
+			fmt.Println("Searching For: ", w.Title)
+		}
 		currentWrit, err = (&writQuery{
 			EditorMode: true,
 			Title:      w.Title,
@@ -466,11 +457,27 @@ func InitWrit(w *Writ) error {
 
 	if !exists {
 		w.Created = time.Now().Unix()
-		if len(w.Content) == 0 || len(w.Title) == 0 {
+		if len(w.Markdown) < 1 || len(w.Title) < 1 || len(w.Author) < 1 {
+			if DevMode {
+				fmt.Println("InitWrit - it's horribly incomplete, fix it, add in author, title, and markdown")
+			}
 			return ErrIncompleteWrit
 		}
+
+		user, err := UserByUsername(w.Author)
+		if err != nil {
+			if DevMode {
+				fmt.Println("InitWrit - author ("+w.Author+") is invalid or MIA: ", err)
+			}
+			return ErrAuthorIsNoUser
+		}
+		w.AuthorKey = user.Key
+
 		w.RenderContent()
-		w.Slugify()
+		if len(w.Slug) < 1 {
+			w.Slugify()
+		}
+
 		meta, err := Writs.CreateDocument(ctx, w)
 		if err != nil {
 			if DevMode {
@@ -504,9 +511,55 @@ func InitWrit(w *Writ) error {
 			}
 			return err
 		}
+		if !currentWrit.Public && w.Public {
+			go notifySubscribers(w.Key)
+		}
 	}
 
 	return nil
+}
+
+func notifySubscribers(writKey string) {
+	writ, err := WritByKey(writKey)
+	if err != nil {
+		return
+	}
+
+	query := `FOR u IN users FILTER u.subscriber == true RETURN u`
+	ctx := driver.WithQueryCount(context.Background())
+	var users []User
+	cursor, err := DB.Query(ctx, query, obj{})
+	if err != nil {
+		return
+	}
+	defer cursor.Close()
+	users = []User{}
+	for {
+		var doc User
+		_, err = cursor.ReadDocument(ctx, &doc)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return
+		}
+		users = append(users, doc)
+	}
+
+	mail := MakeEmail()
+	mail.Subject("Subscriber Update: Newly Published Writ")
+	domain := AppDomain
+	if DevMode {
+		domain = "localhost:2443"
+	}
+	mail.HTML().Set(`
+		<h4>There's a new writ: ` + writ.Title + `</h4>
+		<p><a href="https://` + domain + "/writ/" + writ.Slug + `">check it out</a></p>
+		<sub><a href="https://` + domain + `/subscribe-toggle">unsubcribe</a></sub>
+	`)
+	for _, user := range users {
+		mail.Bcc(user.Email)
+	}
+	go SendEmail(mail)
 }
 
 func initWrits() {
@@ -574,7 +627,9 @@ func initWrits() {
 
 		err = InitWrit(&writ)
 		if err != nil {
-			return c.JSON(503, obj{"ok": false, "error": err})
+			if !driver.IsNoMoreDocuments(err) {
+				return c.JSON(503, obj{"ok": false, "error": err})
+			}
 		}
 
 		fmt.Println(`Baking Writs! - `, writ.Title)
