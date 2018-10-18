@@ -241,17 +241,19 @@ func AuthenticateUser(email, username string) (User, error) {
 		return user, err
 	}
 
-	subject := UnverifiedSubject
+	mail := MakeEmail()
+
+	mail.To(user.Email)
 	if user.Verified() {
-		subject = VerifiedSubject
+		mail.Subject(VerifiedSubject)
+	} else {
+		mail.Subject(UnverifiedSubject)
 	}
 
-	err = SendEmail(&Email{
-		To:      []string{user.Email},
-		Subject: subject,
-		Text:    emailtxt,
-		HTML:    emailhtml,
-	})
+	mail.HTML().Set(string(emailhtml[:len(emailhtml)]))
+	mail.Plain().Set(string(emailtxt[:len(emailtxt)]))
+
+	err = SendEmail(mail)
 	if err != nil && DevMode {
 		fmt.Println(`Could not send email to `+user.Email+` because: `, err)
 	}

@@ -1,28 +1,35 @@
 package backend
 
 import (
-	"crypto/tls"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
-	"log"
-	"net"
-	"net/mail"
+	"math"
+	"math/big"
 	"net/smtp"
-	"net/textproto"
+	"os"
+	"time"
+
+	"github.com/SaulDoesCode/mailyak"
+	"github.com/driusan/dkim"
 )
 
 // EmailSettings - email configuration and setup to send authtokens and stuff
 var (
-	EmailTLSConfig *tls.Config
-	SMTPAuth       smtp.Auth
-	EmailConf      = struct {
+	SMTPAuth      smtp.Auth
+	DKIMSignature dkim.Signature
+	EmailConf     = struct {
 		Address  string
 		Server   string
 		Port     string
-		FromTxt  string
+		FromName string
 		Email    string
 		Password string
 	}{}
+	PrivateDKIMkey *rsa.PrivateKey
 	// ErrInvalidEmail bad email
 	ErrInvalidEmail = errors.New(`Invalid Email Address`)
 )
@@ -30,10 +37,37 @@ var (
 // startEmailer - initialize the blog's email configuration
 func startEmailer() {
 	SMTPAuth = smtp.PlainAuth("", EmailConf.Email, EmailConf.Password, EmailConf.Server)
-	// TLS config
-	EmailTLSConfig = &tls.Config{
-		// InsecureSkipVerify: DevMode,
-		ServerName: EmailConf.Server,
+
+	block, _ := pem.Decode(DKIMKey)
+	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		fmt.Println("the provided dkim key is bad, fix it")
+		panic(err)
+	}
+	PrivateDKIMkey = key
+
+	DKIMSignature, err = dkim.NewSignature(
+		"relaxed/relaxed",
+		"mail",
+		EmailConf.Server,
+		[]string{"From", "Date", "Subject", "To"},
+	)
+	if err != nil {
+		fmt.Println("couldn't build a dkim signature")
+		panic(err)
+	}
+
+	// Send a little test email
+	if DevMode {
+		mail := MakeEmail()
+		mail.Subject("grimstack.io dev mode startup test")
+		mail.To("saulvdw@gmail.com")
+		mail.HTML().Set("<h1>You Seeing This?</h1>")
+		err = SendEmail(mail)
+		if err != nil {
+			fmt.Println("emails aren't sending, whats wrong?")
+			panic(err)
+		}
 	}
 
 	fmt.Println(`SMTP Emailer Started`)
@@ -43,95 +77,220 @@ func stopEmailer() {
 	//	EmailPool.Close()
 }
 
-// SendEmail send an *Email (with the correct details of course)
-func SendEmail(mail *Email) error {
-	if len(mail.From) == 0 {
-		mail.From = EmailConf.FromTxt
-	}
-
-	if &mail.Headers == nil {
-		mail.Headers = textproto.MIMEHeader{}
-	}
-
-	if !validEmail(mail.To[0]) {
-		return ErrInvalidEmail
-	}
-	return mail.SendWithTLS(EmailConf.Address, SMTPAuth, EmailTLSConfig)
+// MakeEmail builds a new mailyak instance
+func MakeEmail() *mailyak.MailYak {
+	return mailyak.New(EmailConf.Address, SMTPAuth)
 }
 
+// SendEmail send a dkim signed mailyak email
+func SendEmail(m *mailyak.MailYak) error {
+	m.From(EmailConf.Email)
+	m.FromName(EmailConf.FromName)
+	mid, err := generateMessageID()
+	if err == nil {
+		m.AddHeader("Message-Id", mid)
+	}
+	return m.SignAndSend(DKIMSignature, PrivateDKIMkey)
+}
+
+var maxBigInt = big.NewInt(math.MaxInt64)
+
+// generateMessageID generates and returns a string suitable for an RFC 2822
+// compliant Message-ID, e.g.:
+// <1444789264909237300.3464.1819418242800517193@DESKTOP01>
+//
+// The following parameters are used to generate a Message-ID:
+// - The nanoseconds since Epoch
+// - The calling PID
+// - A cryptographically random int64
+// - The sending hostname
+func generateMessageID() (string, error) {
+	t := time.Now().UnixNano()
+	pid := os.Getpid()
+	rint, err := rand.Int(rand.Reader, maxBigInt)
+	if err != nil {
+		return "", err
+	}
+	msgid := fmt.Sprintf("<%d.%d.%d@%s>", t, pid, rint, AppDomain)
+	return msgid, nil
+}
+
+/*
+
+// Mail container for email fields
 type Mail struct {
-	From string
+	From    string
+	To      string
+	Subject string
+	Text    string
+	HTML    string
+	Headers map[string]string
 }
 
-func emailer() {
-	from := mail.Address{"", "username@example.tld"}
-	to := mail.Address{"", "username@anotherexample.tld"}
 
-	subj := "This is the email subject"
-	body := "This is an example body.\n With two lines."
+func sendmail(mail *Mail) error {
+	useTLS := false
+	useStartTLS := true
 
-	// Setup headers
-	headers := make(map[string]string)
-	headers["From"] = from.String()
-	headers["To"] = to.String()
-	headers["Subject"] = subj
+	if mail.Headers == nil {
+		mail.Headers = make(map[string]string)
+	}
 
-	// Setup message
+	if _, ok := mail.Headers["From"]; !ok {
+		if len(mail.From) == 0 {
+			mail.From = EmailConf.Email
+		}
+		mail.Headers["From"] = mail.From
+	}
+
+	if _, ok := mail.Headers["To"]; !ok {
+		mail.Headers["To"] = mail.To
+	}
+	if _, ok := mail.Headers["Subject"]; !ok {
+		mail.Headers["Subject"] = mail.Subject
+	}
+	if _, ok := mail.Headers["MIME-Version"]; !ok {
+		mail.Headers["MIME-Version"] = "1.0"
+	}
+	if _, ok := mail.Headers["Content-Type"]; !ok {
+		mail.Headers["Content-Type"] = "text/html; charset=\"utf-8\""
+	}
+	mail.Headers["Content-Transfer-Encoding"] = "base64"
+
+	if _, ok := mail.Headers["Message-Id"]; !ok {
+		id, err := generateMessageID()
+		if err != nil {
+			return err
+		}
+		mail.Headers["Message-Id"] = id
+	}
+
+	if _, ok := mail.Headers["Date"]; !ok {
+		mail.Headers["Date"] = time.Now().Format(time.RFC1123Z)
+	}
+
 	message := ""
-	for k, v := range headers {
+	for k, v := range mail.Headers {
 		message += fmt.Sprintf("%s: %s\r\n", k, v)
 	}
-	message += "\r\n" + body
+	message += "\r\n" + base64.StdEncoding.EncodeToString([]byte(mail.HTML))
 
-	// Connect to the SMTP Server
-	servername := "smtp.example.tld:465"
+	mailstring, err := dkimEmail(message)
+	if err != nil {
+		if DevMode {
+			fmt.Printf("DKIM signing SendEmail Error: %s\n", err)
+		}
+		return err
+	}
 
-	host, _, _ := net.SplitHostPort(servername)
+	conn, err := net.Dial("tcp", EmailConf.Address)
+	if err != nil {
+		if DevMode {
+			fmt.Printf("net.Dial SendEmail Error: %s\n", err)
+		}
+		return err
+	}
 
-	auth := smtp.PlainAuth("", "username@example.tld", "password", host)
-
-	// TLS config
+	// TLS
 	tlsconfig := &tls.Config{
-		InsecureSkipVerify: true,
-		ServerName:         host,
+		InsecureSkipVerify: DevMode,
+		ServerName:         EmailConf.Server,
 	}
 
-	c, err := smtp.Dial(servername)
+	if useTLS {
+		conn = tls.Client(conn, tlsconfig)
+	}
+
+	client, err := smtp.NewClient(conn, EmailConf.Server)
 	if err != nil {
-		log.Panic(err)
+		if DevMode {
+			fmt.Printf("SMTP-Client SendEmail Error: %s\n", err)
+		}
+		return err
 	}
 
-	c.StartTLS(tlsconfig)
-
-	// Auth
-	if err = c.Auth(auth); err != nil {
-		log.Panic(err)
+	if err = client.Hello(EmailConf.Server); err != nil {
+		if DevMode {
+			fmt.Printf("HELLO SendEmail Error: %s\n", err)
+		}
+		return err
 	}
 
-	// To && From
-	if err = c.Mail(from.Address); err != nil {
-		log.Panic(err)
+	hasStartTLS, _ := client.Extension("STARTTLS")
+	if useStartTLS && hasStartTLS {
+		fmt.Println("STARTTLS ...")
+		if err = client.StartTLS(tlsconfig); err != nil {
+			if DevMode {
+				fmt.Printf("STARTTLS SendEmail Error: %s\n", err)
+			}
+			return err
+		}
 	}
 
-	if err = c.Rcpt(to.Address); err != nil {
-		log.Panic(err)
+	// Set up authentication information.
+	auth := smtp.PlainAuth("", EmailConf.Email, EmailConf.Password, EmailConf.Server)
+
+	if ok, _ := client.Extension("AUTH"); ok {
+		if err := client.Auth(auth); err != nil {
+			if DevMode {
+				fmt.Printf("SendEmail Error during AUTH %s\n", err)
+			}
+			return err
+		}
 	}
 
-	// Data
-	w, err := c.Data()
+	if err := client.Mail(mail.From); err != nil {
+		if DevMode {
+			fmt.Printf("From SendEmail Error: %s\n", err)
+			fmt.Println("It Was: ", mail.From)
+		}
+		return err
+	}
+
+	if err := client.Rcpt(mail.To); err != nil {
+		if DevMode {
+			fmt.Printf("To SendEmail Error: %s\n", err)
+		}
+		return err
+	}
+
+	w, err := client.Data()
 	if err != nil {
-		log.Panic(err)
+		if DevMode {
+			fmt.Printf("Data SendEmail Error: %s\n", err)
+		}
+		return err
 	}
 
-	_, err = w.Write([]byte(message))
+	_, err = w.Write(mailstring)
 	if err != nil {
-		log.Panic(err)
+		if DevMode {
+			fmt.Printf("Write Mesasge SendEmail Error: %s\n", err)
+		}
+		return err
 	}
 
 	err = w.Close()
 	if err != nil {
-		log.Panic(err)
+		if DevMode {
+			fmt.Printf("SendEmail Error: %s\n", err)
+		}
+		return err
 	}
 
-	c.Quit()
+	return client.Quit()
 }
+
+var maxBigInt = big.NewInt(math.MaxInt64)
+
+func generateMessageID() (string, error) {
+	t := time.Now().UnixNano()
+	pid := os.Getpid()
+	rint, err := rand.Int(rand.Reader, maxBigInt)
+	if err != nil {
+		return "", err
+	}
+	msgid := fmt.Sprintf("<%d.%d.%d@%s>", t, pid, rint, AppDomain)
+	return msgid, nil
+}
+*/

@@ -2,9 +2,10 @@ package backend
 
 import (
 	"fmt"
-	"text/template"
+	"io/ioutil"
 	"net/http"
 	"os"
+	"text/template"
 	"time"
 
 	"github.com/SaulDoesCode/echo-memfile"
@@ -31,6 +32,8 @@ var (
 	AppDomain string
 	// Config file data as gjson result
 	Config gjson.Result
+	// DKIMKey private dkim key used for email signing
+	DKIMKey []byte
 	// Server the echo instance running the show
 	Server *echo.Echo
 	// DevMode run the app in production or dev-mode
@@ -69,6 +72,12 @@ func Init(configfile string) {
 	AppName = Config.Get("appname").String()
 	AppDomain = Config.Get("domain").String()
 
+	DKIMKey, err = ioutil.ReadFile(Config.Get("dkim_key").String())
+	if err != nil {
+		fmt.Println("dkim_key is missing, generate one")
+		panic(err)
+	}
+
 	fmt.Println("Firing up: ", AppName+"...")
 	fmt.Println("DevMode: ", DevMode)
 
@@ -99,10 +108,11 @@ func Init(configfile string) {
 	EmailConf.Server = Config.Get("admin_email.server").String()
 	EmailConf.Port = Config.Get("admin_email.port").String()
 	EmailConf.Password = Config.Get("admin_email.password").String()
-	EmailConf.FromTxt = Config.Get("admin_email.fromtxt").String()
+	EmailConf.FromName = Config.Get("admin_email.name").String()
 	EmailConf.Address = EmailConf.Server + ":" + EmailConf.Port
 
-	fmt.Println(EmailConf.Address, EmailConf.FromTxt)
+	fmt.Println(EmailConf.Address, EmailConf.Email, EmailConf.FromName)
+
 	startEmailer()
 	defer stopEmailer()
 
