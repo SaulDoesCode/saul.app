@@ -17,6 +17,8 @@ var (
 	Users driver.Collection
 	// Writs arangodb writ collection containing writs
 	Writs driver.Collection
+	// RateLimits arangodb ratelimits collection
+	RateLimits driver.Collection
 )
 
 func setupDB(endpoints []string, dbname, username, password string) {
@@ -93,6 +95,13 @@ func setupDB(endpoints []string, dbname, username, password string) {
 	if err != nil {
 		panic(err)
 	}
+
+	ratelimits, err := DB.Collection(nil, "ratelimits")
+	if err != nil {
+		fmt.Println("Could not get ratelimiting collection from db:")
+		panic(err)
+	}
+	RateLimits = ratelimits
 }
 
 // Query query the app's DB with AQL, bindvars, and map that to an output

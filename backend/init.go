@@ -8,6 +8,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/didip/tollbooth"
+	"github.com/didip/tollbooth/limiter"
 	"github.com/SaulDoesCode/echo-memfile"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -42,8 +44,8 @@ var (
 	Tokenator *Branca
 	// Verinator token generator/decoder for verification codes only
 	Verinator *Branca
-	// VerifierSize size of pre-token verification code
-	VerifierSize = 14
+	// RateLimiter restrict spammy trafic with a tollbooth limiter
+	RateLimiter *limiter.Limiter
 )
 
 // Init start the backend server
@@ -60,8 +62,15 @@ func Init(configfile string) {
 	Server.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 		Format: "${method}::${status} ${host}${uri}  \tlag=${latency_human}\n",
 	}))
+	Server.Use(middleware.BodyLimit("3M"))
 
-	mfi := memfile.New(Server, Config.Get("assets").String(), DevMode)
+	RateLimiter = tollbooth.NewLimiter(1, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour})	
+
+	RateLimiter.SetMethods([]string{"GET", "POST"})
+
+	Server.Use(LimitMiddleware(RateLimiter))
+
+	mfi := memfile.New(Server, Config.Get("assets").String(), false)
 	if DevMode {
 		mfi.UpdateOnInterval(time.Millisecond * 400)
 	} else {
@@ -148,5 +157,21 @@ func Init(configfile string) {
 			"/etc/letsencrypt/live/"+AppDomain+"/cert.pem",
 			"/etc/letsencrypt/live/"+AppDomain+"/privkey.pem",
 		))
+	}
+}
+
+// LimitMiddleware tollbooth adapter for echo
+//
+// from  https://github.com/didip/tollbooth_echo/blob/master/tollbooth_echo.go
+// credit goes to @didip
+func LimitMiddleware(lmt *limiter.Limiter) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return echo.HandlerFunc(func(c echo.Context) error {
+			httpError := tollbooth.LimitByRequest(lmt, c.Response(), c.Request())
+			if httpError != nil {
+				return c.String(httpError.StatusCode, httpError.Message)
+			}
+			return next(c)
+		})
 	}
 }

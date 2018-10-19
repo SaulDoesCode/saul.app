@@ -17,6 +17,8 @@ var (
 	ErrUnauthorized = errors.New("unauthorized request")
 	// ErrIncompleteUser user is half baked, best get them in the DB before doing funny stuff
 	ErrIncompleteUser = errors.New("cannot mutate a user that is incomplete or not in database")
+	// ErrEmailRateLimit too many send requests on a particular email
+	ErrEmailRateLimit = errors.New("too many emails sent to this address in a short time")
 )
 
 // Role auth roles/perms
@@ -59,7 +61,8 @@ var (
 		emailmd5: @emailmd5,
 		username: @username,
 		created: DATE_NOW(),
-		logins: [DATE_NOW()],
+		logins: [],
+		auths: [],
 		roles: @roles
 	} INTO users OPTIONS {waitForSync: true} RETURN NEW`
 	FindUSERByUsername = `FOR u IN users FILTER u.username == @username RETURN u`
@@ -77,6 +80,7 @@ type User struct {
 	Verifier    string   `json:"verifier,omitempty"`
 	Created     int64    `json:"created,omitempty"`
 	Logins      []int64  `json:"logins,omitempty"`
+	Auths       []int64  `json:"auths,omitempty"`
 	Roles       []Role   `json:"roles,omitempty"`
 	Friends     []string `json:"friends,omitempty"`
 	Exp         int64    `json:"exp,omitempty"`
@@ -104,24 +108,38 @@ func (user *User) Update(query string, vars obj) error {
 	return err
 }
 
-// Verified check that a user has verified their email at least once
-func (user *User) Verified() bool {
+// HasRole check that a user has a particular auth role
+func (user *User) HasRole(role Role) bool {
 	for _, val := range user.Roles {
-		if val == VerifiedUser {
+		if val == role {
 			return true
 		}
 	}
 	return false
 }
 
-// Verified check that a user has verified their email at least once
-func (user *User) isAdmin() bool {
+// HasRoles check that a user has particular auth roles
+func (user *User) HasRoles(roles []Role) bool {
+	milestones := 0
+	requires := len(roles)
 	for _, val := range user.Roles {
-		if val == Admin {
-			return true
+		for _, role := range roles {
+			if val == role {
+				milestones++
+			}
 		}
 	}
-	return false
+	return milestones == requires
+}
+
+// Verified check that a user has verified their email at least once
+func (user *User) Verified() bool {
+	return user.HasRole(VerifiedUser)
+}
+
+// Verified check that a user has verified their email at least once
+func (user *User) isAdmin() bool {
+	return user.HasRole(Admin)
 }
 
 // SetupVerifier initiate verification process with verifier and db update
@@ -180,6 +198,68 @@ func IsUsernameAvailable(username string) bool {
 	return false
 }
 
+type ratelimit struct {
+	Key   string `json:"_key,omitempty"`
+	Start int64  `json:"start"`
+	Count int64  `json:"count"`
+}
+
+func ratelimitEmail(email string, maxcount int64, duration time.Duration) bool {
+	var limit ratelimit
+	err := QueryOne(
+		`FOR l IN ratelimits
+		 FILTER l._key == @key
+		 UPDATE l WITH {count: l.count + 1} IN ratelimits OPTIONS {waitForSync: true}
+		 RETURN NEW`,
+		obj{"key": email},
+		&limit,
+	)
+	if driver.IsNotFound(err) || driver.IsNoMoreDocuments(err) {
+		_, err := DB.Query(
+			driver.WithWaitForSync(context.Background()),
+			`INSERT {_key: @key, start: @start, count: 1} IN ratelimits`,
+			obj{"start": time.Now().Unix(), "key": email},
+		)
+		if err != nil && DevMode {
+			fmt.Println("email ratelimits error: new limit ", err)
+		}
+		return err == nil
+	} else if err != nil {
+		if DevMode {
+			fmt.Println("email ratelimits error: something happened ", err)
+		}
+		return false
+	}
+
+	if limit.Start+int64(duration) < time.Now().Unix() {
+		// _, err := RateLimits.RemoveDocument(driver.WithWaitForSync(context.Background()), email)
+		_, err := DB.Query(
+			driver.WithWaitForSync(context.Background()),
+			`UPDATE @key WITH {count: 0, start: @start} IN ratelimits`,
+			obj{"start": time.Now().Unix(), "key": email},
+		)
+		if DevMode && err != nil {
+			fmt.Println("email ratelimits error: trouble resetting ", err)
+		}
+		return err == nil
+	}
+
+	if limit.Count > maxcount {
+		_, err := DB.Query(
+			driver.WithWaitForSync(context.Background()),
+			`FOR l IN ratelimits FILTER l._key == @key
+		   UPDATE l WITH {count: l.count + 1, start: @start} IN ratelimits`,
+			obj{"start": time.Now().Add(5 * time.Minute).Unix(), "key": email},
+		)
+		if DevMode && err != nil {
+			fmt.Println("email ratelimits error: trouble removing entry ", err)
+		}
+		return false
+	}
+
+	return true
+}
+
 // AuthenticateUser create and/or authenticate a user
 func AuthenticateUser(email, username string) (User, error) {
 	user, err := UserByDetails(email, username)
@@ -205,6 +285,10 @@ func AuthenticateUser(email, username string) (User, error) {
 			}
 			return user, err
 		}
+	}
+
+	if !ratelimitEmail(email, 3, time.Minute*5) {
+		return user, ErrEmailRateLimit
 	}
 
 	err = user.SetupVerifier()
@@ -294,7 +378,7 @@ func VerifyUser(verifier string) (*User, error) {
 	} else {
 		err = user.Update(`{
 			verifier: null,
-			roles: PUSH(REMOVE_VALUE(u.roles, @unverified), @verified)
+			roles: PUSH(REMOVE_VALUE(u.roles, @unverified), @verified, true)
 		}`, obj{
 			"unverified": UnverifiedUser,
 			"verified":   VerifiedUser,
@@ -309,12 +393,19 @@ func VerifyUser(verifier string) (*User, error) {
 }
 
 // GenerateAuthToken create a branca token
-func GenerateAuthToken(payload string) string {
-	token, err := Tokenator.Encode(payload)
+func GenerateAuthToken(user *User, renew bool) (string, error) {
+	now := time.Now()
+	token, err := Tokenator.EncodeWithTime(user.Key, now)
 	if err != nil {
 		panic(err)
 	}
-	return token
+	vars := obj{"now": now.Unix()}
+	if renew {
+		err = user.Update(`{auths: APPEND(u.auths, @now, true)}`, vars)
+	} else {
+		err = user.Update(`{auths: APPEND(u.auths, @now, true), logins: PUSH(u.logins, @now)}`, vars)
+	}
+	return token, err
 }
 
 // ValidateAuthToken and return a user if ok
@@ -327,6 +418,12 @@ func ValidateAuthToken(token string) (User, bool) {
 		ok = err == nil
 	}
 	return user, ok
+}
+
+// IsCurrentToken check that the auth token a user is using is authentically current
+func IsCurrentToken(user *User, tk *BrancaToken) bool {
+	authslen := len(user.Auths)
+	return authslen != 0 && tk.Timestamp == user.Auths[authslen-1]
 }
 
 // CredentialCheck get an authorized user from a route handler's context
@@ -355,21 +452,36 @@ func CredentialCheck(c ctx) (*User, error) {
 		return nil, ErrUnauthorized
 	}
 
+	if !IsCurrentToken(&user, &tk) {
+		if DevMode {
+			fmt.Println("The Token is not current")
+		}
+		return nil, ErrUnauthorized
+	}
+
 	if tk.ExpiresBefore(time.Now().Add(time.Hour * 48)) {
 		// refresh the auth token if it's about to go bad
-		authCookie := &http.Cookie{
-			Name:     "Auth",
-			Value:    GenerateAuthToken(user.Key),
-			Expires:  time.Now().Add(time.Hour * (24 * 7)),
-			MaxAge:   60 * 60 * 24 * 7,
-			Path:     "/",
-			HttpOnly: true,
+
+		newtoken, err := GenerateAuthToken(&user, true)
+		if err == nil {
+			authCookie := &http.Cookie{
+				Name:     "Auth",
+				Value:    newtoken,
+				Expires:  time.Now().Add(time.Hour * (24 * 7)),
+				MaxAge:   60 * 60 * 24 * 7,
+				Path:     "/",
+				HttpOnly: true,
+			}
+			if !DevMode {
+				authCookie.Domain = AppDomain
+				authCookie.SameSite = http.SameSiteStrictMode
+			}
+			c.SetCookie(authCookie)
+		} else {
+			if DevMode {
+				fmt.Println(`error Renewing Auth Token, it probably has something to do with the db`)
+			}
 		}
-		if !DevMode {
-			authCookie.Domain = AppDomain
-			authCookie.SameSite = http.SameSiteStrictMode
-		}
-		c.SetCookie(authCookie)
 	}
 
 	return &user, err
@@ -450,9 +562,19 @@ func initAuth() {
 
 		user, err := AuthenticateUser(email, username)
 		if err == nil {
-			return c.JSONBlob(203, []byte(`{"msg": "Thanks `+user.Username+`, we sent you an authentication email."}`))
+			return c.JSON(203, obj{
+				"msg": "Thanks" + user.Username + ", we sent you an authentication email.",
+				"ok":  true,
+			})
 		} else if DevMode {
 			fmt.Println("\nAuthentication Problem: \n\tusername - ", username, "\n\temail - ", email, "\n\terror - ", err, "\n\t")
+		}
+
+		if err == ErrEmailRateLimit {
+			return c.JSON(429, obj{
+				"msg": "too many auth requests/emails, wait a bit and try again",
+				"ok":  false,
+			})
 		}
 
 		return UnauthorizedError(c)
@@ -479,19 +601,26 @@ func initAuth() {
 			return UnauthorizedError(c)
 		}
 
-		authCookie := &http.Cookie{
-			Name:     "Auth",
-			Value:    GenerateAuthToken(user.Key),
-			Expires:  time.Now().Add(time.Hour * (24 * 7)),
-			MaxAge:   60 * 60 * 24 * 7,
-			Path:     "/",
-			HttpOnly: true,
+		newtoken, err := GenerateAuthToken(user, false)
+		if err == nil {
+			authCookie := &http.Cookie{
+				Name:     "Auth",
+				Value:    newtoken,
+				Expires:  time.Now().Add(time.Hour * (24 * 7)),
+				MaxAge:   60 * 60 * 24 * 7,
+				Path:     "/",
+				HttpOnly: true,
+			}
+			if !DevMode {
+				authCookie.Domain = AppDomain
+				authCookie.SameSite = http.SameSiteStrictMode
+			}
+			c.SetCookie(authCookie)
+		} else {
+			if DevMode {
+				fmt.Println("error Verifying (email) the user, GenerateAuthToken db problem")
+			}
 		}
-		if !DevMode {
-			authCookie.Domain = AppDomain
-			authCookie.SameSite = http.SameSiteStrictMode
-		}
-		c.SetCookie(authCookie)
 
 		if user.isAdmin() {
 			return c.Redirect(301, "/admin")

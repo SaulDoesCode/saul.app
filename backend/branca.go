@@ -55,13 +55,13 @@ func NewBranca(key string) (b *Branca) {
 	return &Branca{Key: key}
 }
 
-// Encode encodes the data matching the format:
+// EncodeWithTime encodes the data matching the format:
 // Version (byte) || Timestamp ([4]byte) || Nonce ([24]byte) || Ciphertext ([]byte) || Tag ([16]byte)
-func (b *Branca) Encode(data string) (string, error) {
+func (b *Branca) EncodeWithTime(data string, timeStamp time.Time) (string, error) {
 	var timestamp uint32
 	var nonce []byte
 	if b.timestamp == 0 {
-		b.timestamp = uint32(time.Now().Unix())
+		b.timestamp = uint32(timeStamp.Unix())
 	}
 	timestamp = b.timestamp
 
@@ -99,6 +99,12 @@ func (b *Branca) Encode(data string) (string, error) {
 		return "", err
 	}
 	return base62.Encode(token), nil
+}
+
+// Encode encodes the data matching the format:
+// Version (byte) || Timestamp ([4]byte) || Nonce ([24]byte) || Ciphertext ([]byte) || Tag ([16]byte)
+func (b *Branca) Encode(data string) (string, error) {
+	return b.EncodeWithTime(data, time.Now())
 }
 
 // BrancaToken contains all the decomposed parts of a branca token

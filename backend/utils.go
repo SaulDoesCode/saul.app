@@ -99,7 +99,7 @@ func sendError(errorStr string) func(c ctx) error {
 
 // JSONErr helper to send a simple {"err": msg} json with an arbitrary code
 func JSONErr(c ctx, code int, err string) error {
-	return c.JSONBlob(code, []byte(`{"err":"`+err+`"}`))
+	return c.JSON(code, obj{"err": err, "ok": false})
 }
 
 // ReadJSONFile read a json file and get a gjson result for easy use
