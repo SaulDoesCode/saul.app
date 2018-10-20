@@ -43,26 +43,34 @@ type Writ struct {
 	Roles       []Role   `json:"roles,omitempty"`
 }
 
+// Timeframe a distance of time between a .Start time and a .Finish time
+type Timeframe struct {
+	Start time.Time `json:"start,omitempty"`
+	End   time.Time `json:"end,omitempty"`
+}
+
 type writQuery struct {
-	One         bool     `json:"one,omitempty"`
-	Public      bool     `json:"public,omitempty"`
-	EditorMode  bool     `json:"editormode,omitempty"`
-	Extensive   bool     `json:"extensive,omitempty"`
-	UpdateViews bool     `json:"updateviews,omitempty"`
-	Comments    bool     `json:"comments,omitempty"`
-	MembersOnly bool     `json:"membersonly,omitempty"`
-	DontSort    bool     `json:"dontsort,omitempty"`
-	Vars        obj      `json:"vars,omitempty"`
-	ViewedBy    string   `json:"viewedby,omitempty"`
-	LikedBy     string   `json:"likedby,omitempty"`
-	Viewer      string   `json:"viewer,omitempty"`
-	Title       string   `json:"title,omitempty"`
-	Slug        string   `json:"slug,omitempty"`
-	Author      string   `json:"author,omitempty"`
-	Roles       []Role   `json:"roles,omitempty"`
-	Limit       []int64  `json:"limit,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
-	Omissions   []string `json:"omissions,omitempty"`
+	One         bool      `json:"one,omitempty"`
+	Public      bool      `json:"public,omitempty"`
+	EditorMode  bool      `json:"editormode,omitempty"`
+	Extensive   bool      `json:"extensive,omitempty"`
+	UpdateViews bool      `json:"updateviews,omitempty"`
+	Comments    bool      `json:"comments,omitempty"`
+	MembersOnly bool      `json:"membersonly,omitempty"`
+	DontSort    bool      `json:"dontsort,omitempty"`
+	Vars        obj       `json:"vars,omitempty"`
+	ViewedBy    string    `json:"viewedby,omitempty"`
+	LikedBy     string    `json:"likedby,omitempty"`
+	Viewer      string    `json:"viewer,omitempty"`
+	Title       string    `json:"title,omitempty"`
+	Slug        string    `json:"slug,omitempty"`
+	Author      string    `json:"author,omitempty"`
+	Created     time.Time `json:"created,omitempty"`
+	Between     Timeframe `json:"between,omitempty"`
+	Roles       []Role    `json:"roles,omitempty"`
+	Limit       []int64   `json:"limit,omitempty"`
+	Tags        []string  `json:"tags,omitempty"`
+	Omissions   []string  `json:"omissions,omitempty"`
 }
 
 // Exec execute a writQuery to retrieve some/certain writs
@@ -88,6 +96,26 @@ func (q *writQuery) Exec() ([]Writ, error) {
 		}
 		firstfilter = false
 		filter += `writ.membersonly == true `
+	}
+
+	if &q.Between != nil {
+		if !firstfilter {
+			filter += "&& "
+		}
+		firstfilter = false
+		startzero := q.Between.Start.IsZero()
+		endzero := q.Between.End.IsZero()
+		if !startzero && !endzero {
+			q.Vars["@betweenStart"] = q.Between.Start.Unix()
+			q.Vars["@betweenEnd"] = q.Between.Start.Unix()
+			filter += "writ.created > @betweenStart && writ.created < @betweenEnd "
+		} else if startzero {
+			q.Vars["@betweenStart"] = q.Between.Start.Unix()
+			filter += "writ.created > @betweenStart "
+		} else if endzero {
+			q.Vars["@betweenEnd"] = q.Between.Start.Unix()
+			filter += "writ.created < @betweenEnd "
+		}
 	}
 
 	if len(q.Author) > 0 {
@@ -224,6 +252,15 @@ func (q *writQuery) ExecOne() (Writ, error) {
 		}
 		firstfilter = false
 		filter += `writ.membersonly == true `
+	}
+
+	if !q.Created.IsZero() {
+		if !firstfilter {
+			filter += "&& "
+		}
+		firstfilter = false
+		q.Vars["@created"] = q.Created.Unix()
+		filter += "writ.created == @created "
 	}
 
 	if len(q.Slug) > 0 {
@@ -584,13 +621,9 @@ func initWrits() {
 		writ, err := wq.ExecOne()
 
 		if driver.IsNotFound(err) {
-			return c.JSON(404, obj{
-				"error": "couldn't find a writ like that",
-			})
+			return JSONErr(c, 404, "couldn't find a writ like that")
 		} else if err != nil {
-			return c.JSON(503, obj{
-				"error": err.Error(),
-			})
+			return JSONErr(c, 503, err.Error())
 		} else if writ.MembersOnly && !isuser {
 			return UnauthorizedError(c)
 		}
@@ -616,6 +649,10 @@ func initWrits() {
 			}
 		}
 		return err
+	})
+
+	Server.GET("/writs/", func(c ctx) error {
+		return c.JSON(404, []obj{})
 	})
 
 	Server.POST("/writ", AdminHandle(func(c ctx, user *User) error {
