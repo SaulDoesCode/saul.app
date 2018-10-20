@@ -41,7 +41,11 @@ func ratelimitEmail(email string, maxcount int64, duration time.Duration) bool {
 		return false
 	}
 
-	if limit.Start+int64(duration) < time.Now().Unix() {
+	if DevMode {
+		fmt.Println(email, " - this email's ratelimiting expires then: ", time.Unix(limit.Start, 0).Add(duration))
+	}
+
+	if time.Unix(limit.Start, 0).Add(duration).After(time.Now()) {
 		// _, err := RateLimits.RemoveDocument(driver.WithWaitForSync(context.Background()), email)
 		_, err := DB.Query(
 			driver.WithWaitForSync(context.Background()),
