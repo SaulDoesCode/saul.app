@@ -59,12 +59,13 @@ func Init(configfile string) {
 	Server = echo.New()
 
 	Server.Use(middleware.Recover())
+	Server.Use(middleware.BodyLimit("3M"))
+
 	Server.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 		Format: "${method}::${status} ${host}${uri}  \tlag=${latency_human}\n",
 	}))
-	Server.Use(middleware.BodyLimit("3M"))
 
-	RateLimiter = tollbooth.NewLimiter(1, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour})	
+	RateLimiter = tollbooth.NewLimiter(1, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour})
 
 	RateLimiter.SetMethods([]string{"GET", "POST"})
 
@@ -98,16 +99,39 @@ func Init(configfile string) {
 	}
 
 	addrs := []string{}
-	for _, val := range Config.Get("db_address").Array() {
-		addrs = append(addrs, val.String())
+	rawlocaladdrs := Config.Get("db_local_address").Array()
+	if len(rawlocaladdrs) >= 1 {
+		for _, val := range rawlocaladdrs {
+			addrs = append(addrs, val.String())
+		}
 	}
 
-	setupDB(
+	err = setupDB(
 		addrs,
 		Config.Get("db_name").String(),
 		Config.Get("db_username").String(),
 		Config.Get("db_password").String(),
 	)
+	if err != nil && err == ErrBadDBConnection {
+		fmt.Println("couldn't connect to DB locally, trying remote connection now...")
+
+		addrs = []string{}
+		rawaddrs := Config.Get("db_address").Array()
+		for _, val := range rawaddrs {
+			addrs = append(addrs, val.String())
+		}
+
+		err = setupDB(
+			addrs,
+			Config.Get("db_name").String(),
+			Config.Get("db_username").String(),
+			Config.Get("db_password").String(),
+		)
+		if err != nil {
+			fmt.Println("couldn't get DB connection going: ", err)
+			panic(err)
+		}
+	}
 
 	AuthEmailHTML = template.Must(template.ParseFiles("./templates/authemail.html"))
 	AuthEmailTXT = template.Must(template.ParseFiles("./templates/authemail.txt"))
