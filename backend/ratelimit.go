@@ -14,11 +14,15 @@ type ratelimit struct {
 	Count int64  `json:"count"`
 }
 
+// ratelimitEmail limit how many emails can be sent at once
+//
+// nb. maxcount starts from 0
+// to limit your user to 3 consecutive emails, set maxcount to 2
 func ratelimitEmail(email string, maxcount int64, duration time.Duration) bool {
 	var limit ratelimit
 	err := QueryOne(
 		`UPSERT {_key: @key}
-		INSERT {_key: @key, start: @start, count: 1}
+		INSERT {_key: @key, start: @start, count: 0}
 		UPDATE {count: OLD.count + 1} IN ratelimits OPTIONS {waitForSync: true}
 		RETURN NEW`,
 		obj{"start": time.Now().Unix(), "key": email},
@@ -36,19 +40,12 @@ func ratelimitEmail(email string, maxcount int64, duration time.Duration) bool {
 	}
 
 	if time.Since(time.Unix(limit.Start, 0).Add(duration)) > 0 {
-		// _, err := RateLimits.RemoveDocument(driver.WithWaitForSync(context.Background()), email)
-		_, err := DB.Query(
-			driver.WithWaitForSync(context.Background()),
-			`UPDATE @key WITH {count: 1, start: @start} IN ratelimits`,
-			obj{"start": time.Now().Unix(), "key": email},
-		)
+		_, err := RateLimits.RemoveDocument(driver.WithWaitForSync(context.Background()), email)
 		if DevMode && err != nil {
 			fmt.Println("email ratelimits error: trouble resetting ", err)
 		}
 		return err == nil
-	}
-
-	if limit.Count > maxcount {
+	} else if limit.Count > maxcount {
 		_, err := DB.Query(
 			driver.WithWaitForSync(context.Background()),
 			`FOR l IN ratelimits FILTER l._key == @key

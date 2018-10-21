@@ -228,7 +228,7 @@ func AuthenticateUser(email, username string) (User, error) {
 		}
 	}
 
-	if !ratelimitEmail(email, 3, time.Minute*5) {
+	if !ratelimitEmail(email, 2, time.Minute*5) {
 		return user, ErrEmailRateLimit
 	}
 
