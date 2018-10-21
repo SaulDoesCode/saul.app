@@ -58,16 +58,26 @@ func startEmailer() {
 	}
 
 	// Send a little test email
-	if DevMode {
-		mail := MakeEmail()
-		mail.Subject("grimstack.io dev mode startup test")
-		mail.To("saulvdw@gmail.com")
-		mail.HTML().Set("<h1>You Seeing This?</h1>")
-		err = SendEmail(mail)
-		if err != nil {
-			fmt.Println("emails aren't sending, whats wrong?")
-			panic(err)
-		}
+	mail := MakeEmail()
+	mail.Subject(AppDomain + " server startup notification")
+	mail.To(MaintainerEmails...)
+	mail.HTML().Set(`
+		The ` + AppName + ` Server is starting up.
+		Everything looks good so far.
+		The startup may have been caused by a crash of some sort,
+		so do check up on that.
+
+		Other Wise the time of starting is ` + time.Now().Format(time.RFC1123) + `
+
+		That is all.
+		
+		Yours truly
+		The ` + AppName + ` Server.
+	`)
+	err = SendEmail(mail)
+	if err != nil {
+		fmt.Println("emails aren't sending, whats wrong?", err)
+		os.Exit(2)
 	}
 
 	fmt.Println(`SMTP Emailer Started`)
