@@ -17,24 +17,14 @@ type ratelimit struct {
 func ratelimitEmail(email string, maxcount int64, duration time.Duration) bool {
 	var limit ratelimit
 	err := QueryOne(
-		`FOR l IN ratelimits
-		 FILTER l._key == @key
-		 UPDATE l WITH {count: l.count + 1} IN ratelimits OPTIONS {waitForSync: true}
-		 RETURN NEW`,
-		obj{"key": email},
+		`UPSERT {_key: @key}
+		INSERT {_key: @key, start: @start, count: 1}
+		UPDATE {count: OLD.count + 1} IN ratelimits OPTIONS {waitForSync: true}
+		RETURN NEW`,
+		obj{"start": time.Now().Unix(), "key": email},
 		&limit,
 	)
-	if driver.IsNotFound(err) || driver.IsNoMoreDocuments(err) {
-		_, err := DB.Query(
-			driver.WithWaitForSync(context.Background()),
-			`INSERT {_key: @key, start: @start, count: 1} IN ratelimits`,
-			obj{"start": time.Now().Unix(), "key": email},
-		)
-		if err != nil && DevMode {
-			fmt.Println("email ratelimits error: new limit ", err)
-		}
-		return err == nil
-	} else if err != nil {
+	if err != nil {
 		if DevMode {
 			fmt.Println("email ratelimits error: something happened ", err)
 		}
@@ -45,11 +35,11 @@ func ratelimitEmail(email string, maxcount int64, duration time.Duration) bool {
 		fmt.Println(email, " - this email's ratelimiting expires then: ", time.Unix(limit.Start, 0).Add(duration))
 	}
 
-	if time.Unix(limit.Start, 0).Add(duration).After(time.Now()) {
+	if time.Since(time.Unix(limit.Start, 0).Add(duration)) > 0 {
 		// _, err := RateLimits.RemoveDocument(driver.WithWaitForSync(context.Background()), email)
 		_, err := DB.Query(
 			driver.WithWaitForSync(context.Background()),
-			`UPDATE @key WITH {count: 0, start: @start} IN ratelimits`,
+			`UPDATE @key WITH {count: 1, start: @start} IN ratelimits`,
 			obj{"start": time.Now().Unix(), "key": email},
 		)
 		if DevMode && err != nil {
@@ -62,7 +52,7 @@ func ratelimitEmail(email string, maxcount int64, duration time.Duration) bool {
 		_, err := DB.Query(
 			driver.WithWaitForSync(context.Background()),
 			`FOR l IN ratelimits FILTER l._key == @key
-		   UPDATE l WITH {count: l.count + 1, start: @start} IN ratelimits`,
+			 UPDATE l WITH {count: l.count + 1, start: @start} IN ratelimits`,
 			obj{"start": time.Now().Add(5 * time.Minute).Unix(), "key": email},
 		)
 		if DevMode && err != nil {
