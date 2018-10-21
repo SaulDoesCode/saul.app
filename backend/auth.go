@@ -101,9 +101,12 @@ func (user *User) Update(query string, vars obj) error {
 	query = "FOR u in users FILTER u._key == @key UPDATE u WITH " + query + " IN users OPTIONS {keepNull: false, waitForSync: true} RETURN NEW"
 	ctx := driver.WithQueryCount(context.Background())
 	cursor, err := DB.Query(ctx, query, vars)
-	defer cursor.Close()
 	if err == nil {
+		defer cursor.Close()
 		_, err = cursor.ReadDocument(ctx, user)
+		if err != nil && DevMode {
+			fmt.Println("error updating user: ", err)
+		}
 	}
 	return err
 }
@@ -347,7 +350,7 @@ func GenerateAuthToken(user *User, renew bool) (string, error) {
 			}
 		}
 	}
-	user.Sessions = append(user.Sessions, nowunix)
+	vars["sessions"] = append(user.Sessions, nowunix)
 	if renew {
 		err = user.Update(`{sessions: @sessions}`, vars)
 	} else {
@@ -578,7 +581,7 @@ func initAuth() {
 
 	Server.GET("/auth/:verifier", func(c ctx) error {
 		user, err := VerifyUser(c.Param("verifier"))
-		if err != nil {
+		if err != nil || user == nil {
 			if DevMode {
 				fmt.Println("Unable to Authenticate user: ", err)
 			}
@@ -602,7 +605,7 @@ func initAuth() {
 			c.SetCookie(authCookie)
 		} else {
 			if DevMode {
-				fmt.Println("error verifying (email) the user, GenerateAuthToken db problem")
+				fmt.Println("error verifying (email) the user, GenerateAuthToken db problem: ", err)
 			}
 		}
 
