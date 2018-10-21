@@ -98,21 +98,21 @@ func (q *writQuery) Exec() ([]Writ, error) {
 		filter += `writ.membersonly == true `
 	}
 
-	if &q.Between != nil {
+	startzero := q.Between.Start.IsZero()
+	endzero := q.Between.End.IsZero()
+	if !startzero || !endzero {
 		if !firstfilter {
 			filter += "&& "
 		}
 		firstfilter = false
-		startzero := q.Between.Start.IsZero()
-		endzero := q.Between.End.IsZero()
 		if !startzero && !endzero {
 			q.Vars["@betweenStart"] = q.Between.Start.Unix()
-			q.Vars["@betweenEnd"] = q.Between.Start.Unix()
+			q.Vars["@betweenEnd"] = q.Between.End.Unix()
 			filter += "writ.created > @betweenStart && writ.created < @betweenEnd "
-		} else if startzero {
+		} else if !startzero {
 			q.Vars["@betweenStart"] = q.Between.Start.Unix()
 			filter += "writ.created > @betweenStart "
-		} else if endzero {
+		} else if !endzero {
 			q.Vars["@betweenEnd"] = q.Between.Start.Unix()
 			filter += "writ.created < @betweenEnd "
 		}
@@ -651,7 +651,7 @@ func initWrits() {
 		return err
 	})
 
-	Server.GET("/writs/", func(c ctx) error {
+	Server.GET("/writs/:page", func(c ctx) error {
 		return c.JSON(404, []obj{})
 	})
 
@@ -692,4 +692,6 @@ func initWrits() {
 		}
 		return c.JSON(200, output)
 	}))
+
+	fmt.Println("Writ Service Started")
 }
