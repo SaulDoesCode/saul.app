@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"text/template"
 	"time"
@@ -164,4 +167,41 @@ func unix2time(unix string) (time.Time, error) {
 		tm = time.Unix(i, 0)
 	}
 	return tm, err
+}
+
+var (
+	pingclient = &http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}}
+)
+
+// Ping test any http endpoint
+func Ping(endpoint string) bool {
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		if DevMode {
+			fmt.Println("had trouble making a new request for pinging ", endpoint, " : ", err)
+		}
+		return false
+	}
+	req.Close = true
+	res, err := pingclient.Do(req)
+	if err != nil {
+		if DevMode {
+			fmt.Println("had trouble sending a pinging request to ", endpoint, " : ", err)
+		}
+		return false
+	}
+	res.Close = true
+	res.Body.Close()
+	return err == nil && http.StatusOK == res.StatusCode
+}
+
+func exeC(cmd string) error {
+	fmt.Println(AppName+" trying to run this command -> ", cmd)
+	err := exec.Command("/bin/bash", "-c", cmd).Start()
+	if err != nil {
+		fmt.Printf("command error: %s", err)
+	}
+	return err
 }
