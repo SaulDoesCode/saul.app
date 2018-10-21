@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/Machiel/slugify"
@@ -50,27 +51,29 @@ type Timeframe struct {
 }
 
 type writQuery struct {
-	One         bool      `json:"one,omitempty"`
-	Public      bool      `json:"public,omitempty"`
-	EditorMode  bool      `json:"editormode,omitempty"`
-	Extensive   bool      `json:"extensive,omitempty"`
-	UpdateViews bool      `json:"updateviews,omitempty"`
-	Comments    bool      `json:"comments,omitempty"`
-	MembersOnly bool      `json:"membersonly,omitempty"`
-	DontSort    bool      `json:"dontsort,omitempty"`
-	Vars        obj       `json:"vars,omitempty"`
-	ViewedBy    string    `json:"viewedby,omitempty"`
-	LikedBy     string    `json:"likedby,omitempty"`
-	Viewer      string    `json:"viewer,omitempty"`
-	Title       string    `json:"title,omitempty"`
-	Slug        string    `json:"slug,omitempty"`
-	Author      string    `json:"author,omitempty"`
-	Created     time.Time `json:"created,omitempty"`
-	Between     Timeframe `json:"between,omitempty"`
-	Roles       []Role    `json:"roles,omitempty"`
-	Limit       []int64   `json:"limit,omitempty"`
-	Tags        []string  `json:"tags,omitempty"`
-	Omissions   []string  `json:"omissions,omitempty"`
+	One                bool      `json:"one,omitempty"`
+	PrivateOnly        bool      `json:"privateonly,omitempty"`
+	IncludePrivate     bool      `json:"includeprivate,omitempty"`
+	EditorMode         bool      `json:"editormode,omitempty"`
+	Extensive          bool      `json:"extensive,omitempty"`
+	UpdateViews        bool      `json:"updateviews,omitempty"`
+	Comments           bool      `json:"comments,omitempty"`
+	MembersOnly        bool      `json:"membersonly,omitempty"`
+	IncludeMembersOnly bool      `json:"includemembersonly,omitempty"`
+	DontSort           bool      `json:"dontsort,omitempty"`
+	Vars               obj       `json:"vars,omitempty"`
+	ViewedBy           string    `json:"viewedby,omitempty"`
+	LikedBy            string    `json:"likedby,omitempty"`
+	Viewer             string    `json:"viewer,omitempty"`
+	Title              string    `json:"title,omitempty"`
+	Slug               string    `json:"slug,omitempty"`
+	Author             string    `json:"author,omitempty"`
+	Created            time.Time `json:"created,omitempty"`
+	Between            Timeframe `json:"between,omitempty"`
+	Roles              []Role    `json:"roles,omitempty"`
+	Limit              []int64   `json:"limit,omitempty"`
+	Tags               []string  `json:"tags,omitempty"`
+	Omissions          []string  `json:"omissions,omitempty"`
 }
 
 // Exec execute a writQuery to retrieve some/certain writs
@@ -85,9 +88,20 @@ func (q *writQuery) Exec() ([]Writ, error) {
 	filter := ""
 	firstfilter := true
 
-	if q.Public {
+	if q.PrivateOnly {
+		if !firstfilter {
+			filter += "&& "
+		} else {
+			firstfilter = false
+		}
+		filter += `writ.public == false `
+	} else if !q.IncludePrivate {
+		if !firstfilter {
+			filter += "&& "
+		} else {
+			firstfilter = false
+		}
 		filter += `writ.public == true `
-		firstfilter = false
 	}
 
 	if q.MembersOnly {
@@ -96,6 +110,12 @@ func (q *writQuery) Exec() ([]Writ, error) {
 		}
 		firstfilter = false
 		filter += `writ.membersonly == true `
+	} else if !q.IncludeMembersOnly {
+		if !firstfilter {
+			filter += "&& "
+		}
+		firstfilter = false
+		filter += `writ.membersonly == false `
 	}
 
 	startzero := q.Between.Start.IsZero()
@@ -167,20 +187,20 @@ func (q *writQuery) Exec() ([]Writ, error) {
 		query += "FILTER " + filter
 	}
 
+	if !q.DontSort {
+		query += "SORT writ.created DESC "
+	}
+
 	if len(q.Limit) > 0 {
 		q.Vars["pagenum"] = q.Limit[0]
-		query += `LIMIT @pagenum `
+		query += `LIMIT @pagenum`
 		if len(q.Limit) == 2 {
 			q.Vars["pagesize"] = q.Limit[1]
 			query += `, @pagesize `
 		}
 	}
 
-	if !q.DontSort {
-		query += "SORT writ.created DESC "
-	}
-
-	query += "RETURN "
+	query += " RETURN "
 
 	final := "MERGE(writ, {likes: writ.likes + LENGTH(writ.likedby), views: writ.views + LENGTH(writ.viewedby)})"
 
@@ -241,9 +261,20 @@ func (q *writQuery) ExecOne() (Writ, error) {
 	filter := ""
 	firstfilter := true
 
-	if q.Public {
+	if q.PrivateOnly {
+		if !firstfilter {
+			filter += "&& "
+		} else {
+			firstfilter = false
+		}
+		filter += `writ.public == false `
+	} else if !q.IncludePrivate {
+		if !firstfilter {
+			filter += "&& "
+		} else {
+			firstfilter = false
+		}
 		filter += `writ.public == true `
-		firstfilter = false
 	}
 
 	if q.MembersOnly {
@@ -604,7 +635,6 @@ func initWrits() {
 		slug := c.Param("slug")
 
 		wq := writQuery{
-			Public:      true,
 			UpdateViews: true,
 			Slug:        slug,
 		}
@@ -651,8 +681,36 @@ func initWrits() {
 		return err
 	})
 
-	Server.GET("/writs/:page", func(c ctx) error {
-		return c.JSON(404, []obj{})
+	Server.GET("/writs/:page/:count", func(c ctx) error {
+		page, err := strconv.ParseInt(c.Param("page"), 10, 64)
+		if err != nil {
+			return BadRequestError(c)
+		}
+		count, err := strconv.ParseInt(c.Param("count"), 10, 64)
+		if err != nil {
+			return BadRequestError(c)
+		}
+
+		q := &writQuery{
+			Limit: []int64{page, count},
+		}
+
+		user, err := CredentialCheck(c)
+		if err == nil && user != nil {
+			if count > 200 {
+				return JSONErr(c, 403, "requesting too many items at once, members >= 200")
+			}
+			q.IncludeMembersOnly = true
+		} else if count > 100 {
+			return JSONErr(c, 403, "requesting too many items at once, non-members >= 100")
+		}
+
+		writs, err := q.Exec()
+		if err != nil {
+			return ServerDBError(c)
+		}
+
+		return c.JSON(200, writs)
 	})
 
 	Server.POST("/writ", AdminHandle(func(c ctx, user *User) error {
