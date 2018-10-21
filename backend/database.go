@@ -176,9 +176,6 @@ func startDBHealthCheck() {
 						dbdiedEmergencyEmail("it seems the DB is remote, only you can save us now!", true)
 					}
 				}
-				if DevMode {
-					fmt.Println("DB is ok!")
-				}
 			}
 		}
 	}()
