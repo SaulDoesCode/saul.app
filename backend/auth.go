@@ -62,7 +62,7 @@ var (
 		username: @username,
 		created: DATE_NOW(),
 		logins: [],
-		auths: [],
+		sessions: [],
 		roles: @roles
 	} INTO users OPTIONS {waitForSync: true} RETURN NEW`
 	FindUSERByUsername = `FOR u IN users FILTER u.username == @username RETURN u`
@@ -80,7 +80,7 @@ type User struct {
 	Verifier    string   `json:"verifier,omitempty"`
 	Created     int64    `json:"created,omitempty"`
 	Logins      []int64  `json:"logins,omitempty"`
-	Auths       []int64  `json:"auths,omitempty"`
+	Sessions    []int64  `json:"sessions,omitempty"`
 	Roles       []Role   `json:"roles,omitempty"`
 	Friends     []string `json:"friends,omitempty"`
 	Exp         int64    `json:"exp,omitempty"`
@@ -333,15 +333,26 @@ func VerifyUser(verifier string) (*User, error) {
 // GenerateAuthToken create a branca token
 func GenerateAuthToken(user *User, renew bool) (string, error) {
 	now := time.Now()
+	nowunix := now.Unix()
 	token, err := Tokenator.EncodeWithTime(user.Key, now)
 	if err != nil {
 		panic(err)
 	}
-	vars := obj{"now": now.Unix()}
+	vars := obj{}
+
+	if len(user.Sessions) > 0 {
+		for i, session := range user.Sessions {
+			if time.Unix(session, 0).Add(oneweek).After(now) {
+				user.Sessions = append(user.Sessions[:i], user.Sessions[i+1:]...)
+			}
+		}
+	}
+	user.Sessions = append(user.Sessions, nowunix)
 	if renew {
-		err = user.Update(`{auths: APPEND(u.auths, @now, true)}`, vars)
+		err = user.Update(`{sessions: @sessions}`, vars)
 	} else {
-		err = user.Update(`{auths: APPEND(u.auths, @now, true), logins: PUSH(u.logins, @now)}`, vars)
+		vars["now"] = nowunix
+		err = user.Update(`{sessions: @sessions, logins: PUSH(u.logins, @now)}`, vars)
 	}
 	return token, err
 }
@@ -351,17 +362,26 @@ func ValidateAuthToken(token string) (User, bool) {
 	var user User
 	tk, err := Tokenator.Decode(token)
 	ok := err == nil
-	if ok {
-		user, err = UserByKey(tk.Payload)
-		ok = err == nil
+	if !ok {
+		return user, ok
 	}
+	user, err = UserByKey(tk.Payload)
+	ok = err == nil && len(user.Sessions) < 1
+	if !ok {
+		return user, ok
+	}
+	// guilty until proven innocent here unfortunately
+	ok = false
+	now := time.Now()
+	for i, session := range user.Sessions {
+		if time.Unix(session, 0).Add(oneweek).After(now) {
+			user.Sessions = append(user.Sessions[:i], user.Sessions[i+1:]...)
+		} else if tk.Timestamp == session {
+			ok = true
+		}
+	}
+	ok = user.Update(`{sessions: @sessions}`, obj{"sessions": user.Sessions}) == nil
 	return user, ok
-}
-
-// IsCurrentToken check that the auth token a user is using is authentically current
-func IsCurrentToken(user *User, tk *BrancaToken) bool {
-	authslen := len(user.Auths)
-	return authslen != 0 && tk.Timestamp == user.Auths[authslen-1]
 }
 
 // CredentialCheck get an authorized user from a route handler's context
@@ -386,13 +406,6 @@ func CredentialCheck(c ctx) (*User, error) {
 	if err != nil {
 		if DevMode {
 			fmt.Println("CredentialCheck User retrieval - error: ", err)
-		}
-		return nil, ErrUnauthorized
-	}
-
-	if !IsCurrentToken(&user, &tk) {
-		if DevMode {
-			fmt.Println("The Token is not current")
 		}
 		return nil, ErrUnauthorized
 	}
@@ -483,6 +496,13 @@ func initAuth() {
 	})
 
 	Server.POST("/auth", func(c ctx) error {
+		if _, err := CredentialCheck(c); err == nil {
+			return c.JSON(203, obj{
+				"msg": "You're already logged in :D",
+				"ok":  true,
+			})
+		}
+
 		body, err := JSONbody(c)
 		if err != nil {
 			return BadRequestError(c)
@@ -519,6 +539,12 @@ func initAuth() {
 	})
 
 	Server.GET("/auth/logout", func(c ctx) error {
+		token := ""
+		cookie, err := c.Cookie("Auth")
+		if err == nil {
+			token = cookie.Value
+		}
+
 		c.SetCookie(&http.Cookie{
 			Name:     "Auth",
 			Value:    "",
@@ -527,6 +553,26 @@ func initAuth() {
 			Path:     "/",
 			HttpOnly: true,
 		})
+
+		if len(token) > 0 {
+			go func() {
+				tk, err := Tokenator.Decode(token)
+				if err != nil {
+					return
+				}
+
+				user, err := UserByKey(tk.Payload)
+				if err != nil {
+					return
+				}
+
+				user.Update(
+					`{session: REMOVE_VALUE(u.sessions, @session)}`,
+					obj{"session": tk.Timestamp},
+				)
+			}()
+		}
+
 		return nil
 	})
 
@@ -556,7 +602,7 @@ func initAuth() {
 			c.SetCookie(authCookie)
 		} else {
 			if DevMode {
-				fmt.Println("error Verifying (email) the user, GenerateAuthToken db problem")
+				fmt.Println("error verifying (email) the user, GenerateAuthToken db problem")
 			}
 		}
 
@@ -565,9 +611,6 @@ func initAuth() {
 		}
 		return c.Redirect(301, "/")
 	})
-
-	fmt.Println("Auth Handling Started")
-	initAdmin()
 
 	Server.GET("/subscribe-toggle", AuthHandle(func(c ctx, user *User) error {
 		err := user.Update("{subscriber: @subscriber}", obj{"subscriber": !user.Subscriber})
@@ -590,4 +633,7 @@ func initAuth() {
 		}
 		return c.JSON(203, obj{"msg": msg, "ok": true})
 	}))
+
+	fmt.Println("Authentication Services Started")
+	initAdmin()
 }
