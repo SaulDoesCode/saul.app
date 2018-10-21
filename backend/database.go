@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"os"
+	"time"
 
 	"github.com/arangodb/go-driver"
 	"github.com/arangodb/go-driver/http"
@@ -21,12 +23,15 @@ var (
 	RateLimits driver.Collection
 	// ErrBadDBConnection bad database connection, try different details
 	ErrBadDBConnection = errors.New("bad database connection error, try different details")
+	// DBHealthTicker to see if the DB is still ok
+	DBHealthTicker *time.Ticker
+	// DBAlive does the db still live?
+	DBAlive     bool
+	dbendpoints []string
 )
 
 func setupDB(endpoints []string, dbname, username, password string) error {
-	fmt.Println(`Attempting ArangoDB connection...
-		DB: ` + dbname + `
-	`)
+	fmt.Println(`Attempting ArangoDB connection...`)
 
 	// Create an HTTP connection to the database
 	conn, err := http.NewConnection(http.ConnectionConfig{
@@ -50,6 +55,8 @@ func setupDB(endpoints []string, dbname, username, password string) error {
 		fmt.Println("Could not get proper arangodb client:")
 		return err
 	}
+
+	dbendpoints = endpoints
 
 	db, err := client.Database(nil, dbname)
 	if err != nil {
@@ -107,6 +114,75 @@ func setupDB(endpoints []string, dbname, username, password string) error {
 	RateLimits = ratelimits
 
 	return err
+}
+
+var diedEmails = 0
+
+func dbdiedEmergencyEmail(msg string, die bool) {
+	if diedEmails != 0 {
+		return
+	}
+	diedEmails++
+	fmt.Println("Server.. Going.. Down, hang ten we might be reborn! - \n\t", msg)
+	mail := MakeEmail()
+	mail.To(MaintainerEmails...)
+	mail.Subject("the/a " + AppDomain + " database has died, you need to fix it asap!")
+	mail.Plain().Set(`
+	msg:
+	` + msg + `
+
+	The server is going down, everything is going down.
+	The app might save it self and restart the db.
+	But, you should still come and check, to fix it just incase.
+	
+	the ssh command is: 
+		
+		ssh -L 8530:localhost:8530 root@grimstack.io
+
+	Hurry up!!
+	`)
+	SendEmail(mail)
+
+	if die {
+		fmt.Println("the Database is kaput!!!")
+		os.Exit(1)
+	}
+}
+
+func startDBHealthCheck() {
+	DBHealthTicker = time.NewTicker(20 * time.Second)
+	go func() {
+		for range DBHealthTicker.C {
+			for _, endpoint := range dbendpoints {
+				start := time.Now()
+				DBAlive = Ping(endpoint)
+
+				if !DBAlive {
+					if time.Since(start) < 8*time.Millisecond {
+						go func() {
+							DBHealthTicker.Stop()
+							redirectServer.Close()
+							Server.Close()
+
+							err := exeC(`nohup bash -c "nohup arangod -c /etc/arangodb3/arangod.conf &" && (sleep 10 && cd /var/app && sudo ./main) & `)
+							if err != nil {
+								fmt.Println("could not redeem self in the face of hardship!: ", err)
+								dbdiedEmergencyEmail("unable to self recusitate! :(", true)
+							}
+
+							dbdiedEmergencyEmail("something really bad happened with the db", true)
+						}()
+					} else {
+						dbdiedEmergencyEmail("it seems the DB is remote, only you can save us now!", true)
+					}
+				}
+				if DevMode {
+					fmt.Println("DB is ok!")
+				}
+			}
+		}
+	}()
+	fmt.Println("database health checker started")
 }
 
 // Query query the app's DB with AQL, bindvars, and map that to an output
