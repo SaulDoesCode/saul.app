@@ -60,7 +60,7 @@ var (
 		email: @email,
 		emailmd5: @emailmd5,
 		username: @username,
-		created: DATE_NOW(),
+		created: @created,
 		logins: [],
 		sessions: [],
 		roles: @roles
@@ -72,19 +72,19 @@ var (
 
 // User struct describing a user account
 type User struct {
-	Key         string   `json:"_key,omitempty"`
-	Email       string   `json:"email"`
-	EmailMD5    string   `json:"emailmd5"`
-	Username    string   `json:"username"`
-	Description string   `json:"description,omitempty"`
-	Verifier    string   `json:"verifier,omitempty"`
-	Created     int64    `json:"created,omitempty"`
-	Logins      []int64  `json:"logins,omitempty"`
-	Sessions    []int64  `json:"sessions,omitempty"`
-	Roles       []Role   `json:"roles,omitempty"`
-	Friends     []string `json:"friends,omitempty"`
-	Exp         int64    `json:"exp,omitempty"`
-	Subscriber  bool     `json:"subscriber,omitempty"`
+	Key         string      `json:"_key,omitempty"`
+	Email       string      `json:"email"`
+	EmailMD5    string      `json:"emailmd5"`
+	Username    string      `json:"username"`
+	Description string      `json:"description,omitempty"`
+	Verifier    string      `json:"verifier,omitempty"`
+	Created     time.Time   `json:"created,omitempty"`
+	Logins      []time.Time `json:"logins,omitempty"`
+	Sessions    []time.Time `json:"sessions,omitempty"`
+	Roles       []Role      `json:"roles,omitempty"`
+	Friends     []string    `json:"friends,omitempty"`
+	Exp         int64       `json:"exp,omitempty"`
+	Subscriber  bool        `json:"subscriber,omitempty"`
 }
 
 // IsValid check that the user's username and email are valid
@@ -214,11 +214,13 @@ func AuthenticateUser(email, username string) (User, error) {
 		}
 
 		user = User{}
+
 		err = QueryOne(CreateUser, obj{
 			"email":    email,
 			"emailmd5": GetMD5Hash(email),
 			"username": username,
 			"roles":    []Role{UnverifiedUser},
+			"created":  time.Now(),
 		}, &user)
 		if err != nil {
 			if DevMode {
@@ -336,7 +338,6 @@ func VerifyUser(verifier string) (*User, error) {
 // GenerateAuthToken create a branca token
 func GenerateAuthToken(user *User, renew bool) (string, error) {
 	now := time.Now()
-	nowunix := now.Unix()
 	token, err := Tokenator.EncodeWithTime(user.Key, now)
 	if err != nil {
 		panic(err)
@@ -345,16 +346,16 @@ func GenerateAuthToken(user *User, renew bool) (string, error) {
 
 	if len(user.Sessions) > 0 {
 		for i, session := range user.Sessions {
-			if time.Unix(session, 0).Add(oneweek).After(now) {
+			if session.Add(oneweek).After(now) {
 				user.Sessions = append(user.Sessions[:i], user.Sessions[i+1:]...)
 			}
 		}
 	}
-	vars["sessions"] = append(user.Sessions, nowunix)
+	vars["sessions"] = append(user.Sessions, now)
 	if renew {
 		err = user.Update(`{sessions: @sessions}`, vars)
 	} else {
-		vars["now"] = nowunix
+		vars["now"] = now
 		err = user.Update(`{sessions: @sessions, logins: PUSH(u.logins, @now)}`, vars)
 	}
 	return token, err
@@ -377,9 +378,9 @@ func ValidateAuthToken(token string) (User, bool) {
 	ok = false
 	now := time.Now()
 	for i, session := range user.Sessions {
-		if time.Unix(session, 0).Add(oneweek).After(now) {
+		if session.Add(oneweek).After(now) {
 			user.Sessions = append(user.Sessions[:i], user.Sessions[i+1:]...)
-		} else if tk.Timestamp == session {
+		} else if time.Unix(tk.Timestamp, 0) == session {
 			ok = true
 		}
 	}
@@ -571,7 +572,7 @@ func initAuth() {
 
 				user.Update(
 					`{session: REMOVE_VALUE(u.sessions, @session)}`,
-					obj{"session": tk.Timestamp},
+					obj{"session": time.Unix(tk.Timestamp, 0)},
 				)
 			}()
 		}

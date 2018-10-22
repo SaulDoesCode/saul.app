@@ -22,26 +22,26 @@ var (
 
 // Writ - struct representing a post or document in the database
 type Writ struct {
-	Key         string   `json:"_key,omitempty"`
-	Type        string   `json:"type,omitempty"`
-	Title       string   `json:"title,omitempty"`
-	AuthorKey   string   `json:"authorkey,omitempty"`
-	Author      string   `json:"author,omitempty"`
-	Content     string   `json:"content,omitempty"`
-	Injection   string   `json:"injection,omitempty"`
-	Markdown    string   `json:"markdown,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Slug        string   `json:"slug,omitempty"`
-	Tags        []string `json:"tags,omitempty"`
-	Edits       []int64  `json:"edits,omitempty"`
-	Created     int64    `json:"created,omitempty"`
-	Views       int64    `json:"views,omitempty"`
-	ViewedBy    []string `json:"viewedby,omitempty"`
-	LikedBy     []string `json:"likedby,omitempty"`
-	Public      bool     `json:"public,omitempty"`
-	MembersOnly bool     `json:"membersonly,omitempty"`
-	NoComments  bool     `json:"nocomments,omitempty"`
-	Roles       []Role   `json:"roles,omitempty"`
+	Key         string      `json:"_key,omitempty"`
+	Type        string      `json:"type,omitempty"`
+	Title       string      `json:"title,omitempty"`
+	AuthorKey   string      `json:"authorkey,omitempty"`
+	Author      string      `json:"author,omitempty"`
+	Content     string      `json:"content,omitempty"`
+	Injection   string      `json:"injection,omitempty"`
+	Markdown    string      `json:"markdown,omitempty"`
+	Description string      `json:"description,omitempty"`
+	Slug        string      `json:"slug,omitempty"`
+	Tags        []string    `json:"tags,omitempty"`
+	Edits       []time.Time `json:"edits,omitempty"`
+	Created     time.Time   `json:"created,omitempty"`
+	Views       int64       `json:"views,omitempty"`
+	ViewedBy    []string    `json:"viewedby,omitempty"`
+	LikedBy     []string    `json:"likedby,omitempty"`
+	Public      bool        `json:"public,omitempty"`
+	MembersOnly bool        `json:"membersonly,omitempty"`
+	NoComments  bool        `json:"nocomments,omitempty"`
+	Roles       []Role      `json:"roles,omitempty"`
 }
 
 // Timeframe a distance of time between a .Start time and a .Finish time
@@ -126,14 +126,14 @@ func (q *writQuery) Exec() ([]Writ, error) {
 		}
 		firstfilter = false
 		if !startzero && !endzero {
-			q.Vars["@betweenStart"] = q.Between.Start.Unix()
-			q.Vars["@betweenEnd"] = q.Between.End.Unix()
+			q.Vars["@betweenStart"] = q.Between.Start
+			q.Vars["@betweenEnd"] = q.Between.End
 			filter += "writ.created > @betweenStart && writ.created < @betweenEnd "
 		} else if !startzero {
-			q.Vars["@betweenStart"] = q.Between.Start.Unix()
+			q.Vars["@betweenStart"] = q.Between.Start
 			filter += "writ.created > @betweenStart "
 		} else if !endzero {
-			q.Vars["@betweenEnd"] = q.Between.Start.Unix()
+			q.Vars["@betweenEnd"] = q.Between.Start
 			filter += "writ.created < @betweenEnd "
 		}
 	}
@@ -290,7 +290,7 @@ func (q *writQuery) ExecOne() (Writ, error) {
 			filter += "&& "
 		}
 		firstfilter = false
-		q.Vars["@created"] = q.Created.Unix()
+		q.Vars["@created"] = q.Created
 		filter += "writ.created == @created "
 	}
 
@@ -443,7 +443,7 @@ func (writ *Writ) ToObj(omissions ...string) obj {
 	if len(writ.Edits) != 0 {
 		output["edits"] = writ.Edits
 	}
-	if writ.Created != 0 {
+	if !writ.Created.IsZero() {
 		output["created"] = writ.Created
 	}
 	if writ.Views != 0 {
@@ -524,7 +524,7 @@ func InitWrit(w *Writ) error {
 	}
 
 	if !exists {
-		w.Created = time.Now().Unix()
+		w.Created = time.Now()
 		if len(w.Markdown) < 1 || len(w.Title) < 1 || len(w.Author) < 1 {
 			if DevMode {
 				fmt.Println("InitWrit - it's horribly incomplete, fix it, add in author, title, and markdown")
@@ -570,7 +570,7 @@ func InitWrit(w *Writ) error {
 		} else {
 			w.RenderContent()
 		}
-		w.Edits = append(w.Edits, time.Now().Unix())
+		w.Edits = append(w.Edits, time.Now())
 		ctx = driver.WithMergeObjects(ctx, true)
 		_, err := Writs.UpdateDocument(ctx, w.Key, w.ToObj("_key"))
 		if err != nil {
@@ -660,13 +660,12 @@ func initWrits() {
 
 		writdata := writ.ToObj()
 
-		createdate := time.Unix(writ.Created, 0)
-		writdata["Created"] = createdate.Format("1 Jan 2006")
-		writdata["CreateDate"] = createdate
+		writdata["Created"] = writ.Created.Format("1 Jan 2006")
+		writdata["CreateDate"] = writ.Created
 
 		editslen := len(writ.Edits)
 		if editslen != 0 {
-			writdata["ModifiedDate"] = time.Unix(writ.Edits[editslen-1], 0)
+			writdata["ModifiedDate"] = writ.Edits[editslen-1]
 		}
 
 		writdata["URL"] = "https://" + AppDomain + "/writ/" + writ.Slug
